@@ -2,31 +2,57 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner WebAR Final</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Scanner WebAR + Foto</title>
     
     <style>
         body { margin: 0; overflow: hidden; font-family: sans-serif; background: #000; color: white; }
         
-        /* Container do Scanner (Tela 1) */
+        /* -- TELAS -- */
         #scanner-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: white; z-index: 10;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
         
-        /* Container da Realidade Aumentada (Tela 2) */
         #ar-container { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             z-index: 5; background: black;
         }
-        
-        /* UI do Scanner */
+
+        /* -- UI SCANNER -- */
         #reader { width: 100%; max-width: 400px; border-radius: 10px; overflow: hidden; }
         .titulo { color: black; font-size: 24px; margin-bottom: 10px; }
         .aviso { color: #555; text-align: center; margin-bottom: 20px; padding: 0 20px; }
         
-        /* Aviso de Carregamento do 3D */
+        /* -- UI DO AR (Botão de Foto) -- */
+        #ar-ui {
+            position: absolute; bottom: 30px; left: 0; width: 100%;
+            z-index: 20; display: none; /* Escondido até carregar */
+            flex-direction: column; align-items: center; justify-content: center;
+            pointer-events: none; /* Deixa clicar no 3D atrás se precisar */
+        }
+
+        /* O Botão Estilo Instagram */
+        #btn-foto {
+            pointer-events: auto;
+            width: 70px; height: 70px;
+            background-color: white;
+            border: 4px solid rgba(255,255,255,0.5);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+        #btn-foto:active { transform: scale(0.9); background-color: #ddd; }
+
+        /* Mensagem de Feedback */
+        #msg-feedback {
+            background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px;
+            margin-bottom: 15px; font-size: 14px; opacity: 0; transition: opacity 0.5s;
+        }
+        
+        /* Aviso de Carregamento */
         #ar-loading {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px;
@@ -34,104 +60,75 @@
         }
     </style>
     
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-face-aframe.prod.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body>
 
     <div id="scanner-container">
-        <h1 class="titulo">Scanner AR</h1>
-        <p class="aviso">Aponte a câmera para o QR Code para liberar o filtro.</p>
+        <h1 class="titulo">COsecurity AR</h1>
+        <p class="aviso">Aponte para o QR Code #COSECURITYAR</p>
         <div id="reader"></div>
-        <p id="status" style="color:gray; margin-top:15px; font-size: 14px;">Iniciando sistema...</p>
+        <p id="status" style="color:gray; margin-top:15px; font-size: 14px;">Aguardando...</p>
     </div>
 
     <div id="ar-container">
-        <div id="ar-loading">
-            Detectando QR Code...<br>
-            <span style="font-size:12px">Baixando modelo 3D...</span>
+        <div id="ar-loading">Carregando Filtro...</div>
+        
+        <div id="ar-ui">
+            <div id="msg-feedback">Foto salva! Abrindo Instagram...</div>
+            <button id="btn-foto" onclick="tirarFoto()"></button>
         </div>
     </div>
 
     <script>
-        // --- CONFIGURAÇÕES GERAIS ---
-        
-        // 1. O Link do seu modelo 3D. 
-        // Para testar, use este capacete oficial. Depois, explicarei como trocar.
+        // CONFIGURAÇÕES
+        // Link do Modelo (Capacete de exemplo, troque pelo seu bone .glb)
         const URL_DO_MODELO = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DamagedHelmet/glTF-Binary/DamagedHelmet.glb";
-        
-        // 2. Ajustes de Posição (Calibragem)
-        // Se ficar muito grande, diminua para 0.1 0.1 0.1
-        // Se ficar muito pequeno, aumente para 10 10 10
         const ESCALA_INICIAL = "1 1 1"; 
-        
-        // Ajuste Y (segundo número): Negativo desce, Positivo sobe.
-        const POSICAO_INICIAL = "0 -0.3 0"; 
-
-        // -----------------------------
+        const POSICAO_INICIAL = "0 -0.4 0"; 
 
         const scannerContainer = document.getElementById('scanner-container');
         const arContainer = document.getElementById('ar-container');
         const arLoading = document.getElementById('ar-loading');
+        const arUI = document.getElementById('ar-ui');
         const statusMsg = document.getElementById('status');
         let html5QrCode;
         let scannerAtivo = true;
 
-        // INICIALIZAÇÃO
+        // --- 1. SCANNER ---
         function iniciarScanner() {
             html5QrCode = new Html5Qrcode("reader");
-            
-            // Tenta usar câmera traseira (environment)
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-            
-            html5QrCode.start({ facingMode: "environment" }, config, 
-                onScanSuccess, 
-                onScanFailure
-            ).catch(err => {
-                statusMsg.innerText = "Erro de Permissão: " + err;
-                statusMsg.style.color = "red";
-            });
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+                (decodedText) => {
+                    if (scannerAtivo && decodedText) {
+                        scannerAtivo = false;
+                        statusMsg.innerText = "Sucesso! Iniciando...";
+                        statusMsg.style.color = "green";
+                        arLoading.style.display = 'block';
+                        setTimeout(ativarModoAR, 800);
+                    }
+                },
+                () => {}
+            ).catch(err => { statusMsg.innerText = "Erro Câmera: " + err; });
         }
 
-        // QUANDO O QR CODE É LIDO
-        function onScanSuccess(decodedText) {
-            if (scannerAtivo && decodedText) {
-                // Aqui você pode colocar: if (decodedText === "SEU_LINK_ESPECIFICO")
-                
-                scannerAtivo = false; // Trava para não ler 2 vezes
-                statusMsg.innerText = "QR Code Detectado! Abrindo AR...";
-                statusMsg.style.color = "green";
-                
-                // Mostra aviso de carregamento
-                arLoading.style.display = 'block';
-
-                // Pequeno delay para UX (feedback visual)
-                setTimeout(ativarModoAR, 800);
-            }
-        }
-
-        function onScanFailure(error) {
-            // Não fazemos nada aqui para não poluir o console, pois ele falha a cada frame que não vê QR
-        }
-
-        // A MÁGICA: TROCAR DE SCANNER PARA AR
+        // --- 2. TRANSIÇÃO ---
         function ativarModoAR() {
-            // 1. Para a câmera do QR Code (Libera o hardware)
             html5QrCode.stop().then(() => {
-                scannerContainer.style.display = 'none'; // Some com a tela 1
-                
-                // 2. Injeta o código do MindAR na tela 2
+                scannerContainer.style.display = 'none';
                 renderizarCenaAR();
-                
-            }).catch(err => {
-                console.error("Erro ao parar scanner", err);
-            });
+            }).catch(err => console.error(err));
         }
 
+        // --- 3. CENA AR ---
         function renderizarCenaAR() {
+            // Nota Crítica: preserveDrawingBuffer: true é OBRIGATÓRIO para tirar print
             arContainer.innerHTML = `
-                <a-scene mindar-face embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+                <a-scene mindar-face embedded color-space="sRGB" 
+                    renderer="colorManagement: true, physicallyCorrectLights, preserveDrawingBuffer: true" 
+                    vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
                     
                     <a-assets>
                         <a-asset-item id="meuModelo" src="${URL_DO_MODELO}"></a-asset-item>
@@ -140,25 +137,68 @@
                     <a-camera active="false" position="0 0 0"></a-camera>
                     
                     <a-entity mindar-face-target="anchorIndex: 10">
-                        <a-gltf-model 
-                            src="#meuModelo" 
-                            position="${POSICAO_INICIAL}" 
-                            scale="${ESCALA_INICIAL}" 
-                            rotation="0 180 0">
-                        </a-gltf-model>
+                        <a-gltf-model src="#meuModelo" position="${POSICAO_INICIAL}" scale="${ESCALA_INICIAL}" rotation="0 180 0"></a-gltf-model>
                     </a-entity>
-
                 </a-scene>
             `;
 
-            // Quando o modelo 3D terminar de baixar e o rosto for detectado:
             document.querySelector('a-scene').addEventListener('mindar-face-ready', () => {
-                arLoading.style.display = 'none'; // Some com o aviso "Carregando"
+                arLoading.style.display = 'none';
+                arUI.style.display = 'flex'; // Mostra o botão de foto
                 console.log("AR Pronto!");
             });
         }
 
-        // Começa tudo
+        // --- 4. SISTEMA DE FOTO E INSTAGRAM ---
+        function tirarFoto() {
+            const scene = document.querySelector('a-scene');
+            const video = document.querySelector('video'); // O vídeo da webcam do MindAR
+            const canvas3D = scene.components.screenshot.getCanvas('perspective'); // O 3D
+
+            // Cria um canvas temporário para mesclar as duas imagens
+            const canvasFinal = document.createElement('canvas');
+            canvasFinal.width = video.videoWidth;
+            canvasFinal.height = video.videoHeight;
+            const ctx = canvasFinal.getContext('2d');
+
+            // 1. Desenha o vídeo espelhado (como num espelho)
+            ctx.save();
+            ctx.scale(-1, 1); // Inverte horizontalmente
+            ctx.drawImage(video, -canvasFinal.width, 0, canvasFinal.width, canvasFinal.height);
+            ctx.restore();
+
+            // 2. Desenha o 3D por cima
+            ctx.drawImage(canvas3D, 0, 0, canvasFinal.width, canvasFinal.height);
+
+            // 3. Baixa a imagem
+            const dataURL = canvasFinal.toDataURL('image/png');
+            downloadImage(dataURL, 'minha-foto-ar.png');
+
+            // 4. Feedback e Redirecionamento
+            const feedback = document.getElementById('msg-feedback');
+            feedback.style.opacity = 1;
+            
+            setTimeout(() => {
+                // Tenta abrir o app do Instagram
+                // Nota: Em alguns celulares vai para a loja ou home se o app não responder ao link universal
+                window.location.href = "instagram://camera"; 
+                
+                // Fallback: Se não abrir em 1seg, avisa o usuário
+                setTimeout(() => {
+                    feedback.innerText = "Abra o Instagram e poste a foto da galeria!";
+                }, 2000);
+            }, 1500);
+        }
+
+        function downloadImage(data, filename) {
+            const a = document.createElement('a');
+            a.href = data;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
         iniciarScanner();
 
     </script>
