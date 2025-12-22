@@ -53,7 +53,7 @@
 
         // --- URL DO MODELO 3D DE EXEMPLO (Capacete de Papelão) ---
         // No futuro, você trocará esse link pelo link do seu arquivo .glb do boné
-        const MODELO_3D_URL = "https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/face-tracking/assets/cardboard/scene.gltf";
+        const MODELO_3D_URL = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DamagedHelmet/glTF-Binary/DamagedHelmet.glb";
 
         function iniciarScanner() {
             html5QrCode = new Html5Qrcode("reader");
