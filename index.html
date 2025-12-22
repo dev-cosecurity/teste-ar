@@ -3,60 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Scanner WebAR + Foto</title>
+    <title>Scanner WebAR + Foto Final</title>
     
     <style>
         body { margin: 0; overflow: hidden; font-family: sans-serif; background: #000; color: white; }
         
-        /* -- TELAS -- */
+        /* -- TELA 1: LEITOR -- */
         #scanner-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: white; z-index: 10;
+            background: white; z-index: 20; /* Z-index alto para ficar na frente de tudo no início */
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
         
+        /* -- TELA 2: AR -- */
         #ar-container { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            z-index: 5; background: black;
+            z-index: 10; background: black;
         }
 
-        /* -- UI SCANNER -- */
+        /* -- UI DO AR (Botão de Foto) -- */
+        /* CORREÇÃO: Z-index 30 para garantir que flutue sobre TUDO */
+        #ar-ui {
+            position: absolute; bottom: 40px; left: 0; width: 100%;
+            z-index: 30; 
+            display: none; /* Começa invisível, aparece via JS */
+            flex-direction: column; align-items: center; justify-content: center;
+            pointer-events: none; 
+        }
+
+        /* Estilos do Scanner */
         #reader { width: 100%; max-width: 400px; border-radius: 10px; overflow: hidden; }
         .titulo { color: black; font-size: 24px; margin-bottom: 10px; }
         .aviso { color: #555; text-align: center; margin-bottom: 20px; padding: 0 20px; }
         
-        /* -- UI DO AR (Botão de Foto) -- */
-        #ar-ui {
-            position: absolute; bottom: 30px; left: 0; width: 100%;
-            z-index: 20; display: none; /* Escondido até carregar */
-            flex-direction: column; align-items: center; justify-content: center;
-            pointer-events: none; /* Deixa clicar no 3D atrás se precisar */
-        }
-
-        /* O Botão Estilo Instagram */
+        /* Botão Estilo Instagram */
         #btn-foto {
             pointer-events: auto;
             width: 70px; height: 70px;
-            background-color: white;
-            border: 4px solid rgba(255,255,255,0.5);
+            background-color: transparent; /* Fundo transparente */
+            border: 5px solid white; /* Anel branco */
             border-radius: 50%;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
             transition: transform 0.1s;
+            position: relative;
         }
-        #btn-foto:active { transform: scale(0.9); background-color: #ddd; }
+        /* O miolo branco do botão */
+        #btn-foto::after {
+            content: ''; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 55px; height: 55px; background: white; border-radius: 50%;
+        }
+        #btn-foto:active { transform: scale(0.9); }
 
         /* Mensagem de Feedback */
         #msg-feedback {
-            background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px;
-            margin-bottom: 15px; font-size: 14px; opacity: 0; transition: opacity 0.5s;
+            background: rgba(0,0,0,0.8); padding: 12px 20px; border-radius: 25px;
+            margin-bottom: 20px; font-size: 14px; opacity: 0; transition: opacity 0.5s;
+            text-align: center; max-width: 80%;
         }
         
         /* Aviso de Carregamento */
         #ar-loading {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px;
-            color: white; font-size: 16px; z-index: 6; display: none; text-align: center;
+            color: white; font-size: 16px; z-index: 25; display: none; text-align: center;
         }
     </style>
     
@@ -66,25 +77,24 @@
 </head>
 <body>
 
+    <div id="ar-ui">
+        <div id="msg-feedback">Foto salva! Postando...</div>
+        <button id="btn-foto" onclick="tirarFoto()" aria-label="Tirar Foto"></button>
+    </div>
+
+    <div id="ar-loading">Carregando Filtro...</div>
+
     <div id="scanner-container">
-        <h1 class="titulo">COsecurity AR</h1>
-        <p class="aviso">Aponte para o QR Code #COSECURITYAR</p>
+        <h1 class="titulo">Cosecurity AR</h1>
+        <p class="aviso">Aponte para o QR Code #COSECURITY</p>
         <div id="reader"></div>
         <p id="status" style="color:gray; margin-top:15px; font-size: 14px;">Aguardando...</p>
     </div>
 
-    <div id="ar-container">
-        <div id="ar-loading">Carregando Filtro...</div>
-        
-        <div id="ar-ui">
-            <div id="msg-feedback">Foto salva! Abrindo Instagram...</div>
-            <button id="btn-foto" onclick="tirarFoto()"></button>
-        </div>
-    </div>
+    <div id="ar-container"></div>
 
     <script>
-        // CONFIGURAÇÕES
-        // Link do Modelo (Capacete de exemplo, troque pelo seu bone .glb)
+        // --- CONFIGURAÇÕES ---
         const URL_DO_MODELO = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DamagedHelmet/glTF-Binary/DamagedHelmet.glb";
         const ESCALA_INICIAL = "1 1 1"; 
         const POSICAO_INICIAL = "0 -0.4 0"; 
@@ -100,14 +110,17 @@
         // --- 1. SCANNER ---
         function iniciarScanner() {
             html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            
+            html5QrCode.start({ facingMode: "environment" }, config, 
                 (decodedText) => {
                     if (scannerAtivo && decodedText) {
                         scannerAtivo = false;
-                        statusMsg.innerText = "Sucesso! Iniciando...";
+                        statusMsg.innerText = "Sucesso! Carregando...";
                         statusMsg.style.color = "green";
-                        arLoading.style.display = 'block';
-                        setTimeout(ativarModoAR, 800);
+                        arLoading.style.display = 'block'; // Mostra Loading
+                        
+                        setTimeout(ativarModoAR, 500);
                     }
                 },
                 () => {}
@@ -117,14 +130,14 @@
         // --- 2. TRANSIÇÃO ---
         function ativarModoAR() {
             html5QrCode.stop().then(() => {
-                scannerContainer.style.display = 'none';
+                scannerContainer.style.display = 'none'; // Some o scanner
                 renderizarCenaAR();
             }).catch(err => console.error(err));
         }
 
         // --- 3. CENA AR ---
         function renderizarCenaAR() {
-            // Nota Crítica: preserveDrawingBuffer: true é OBRIGATÓRIO para tirar print
+            // Nota: arUI não está aqui dentro, então ele está salvo!
             arContainer.innerHTML = `
                 <a-scene mindar-face embedded color-space="sRGB" 
                     renderer="colorManagement: true, physicallyCorrectLights, preserveDrawingBuffer: true" 
@@ -142,52 +155,62 @@
                 </a-scene>
             `;
 
+            // Detecta quando o AR está pronto para mostrar o botão
+            // Usamos um intervalo de verificação pois as vezes o evento do A-frame falha em disparar
+            const checkScene = setInterval(() => {
+                const scene = document.querySelector('a-scene');
+                if (scene && scene.hasLoaded) {
+                    clearInterval(checkScene);
+                    console.log("Cena carregada, mostrando botão...");
+                    arLoading.style.display = 'none';
+                    arUI.style.display = 'flex'; // Exibe o botão
+                }
+            }, 500);
+            
+            // Redundância: Event Listener padrão
             document.querySelector('a-scene').addEventListener('mindar-face-ready', () => {
                 arLoading.style.display = 'none';
-                arUI.style.display = 'flex'; // Mostra o botão de foto
-                console.log("AR Pronto!");
+                arUI.style.display = 'flex';
             });
         }
 
-        // --- 4. SISTEMA DE FOTO E INSTAGRAM ---
+        // --- 4. TIRA FOTO E ABRE INSTAGRAM ---
         function tirarFoto() {
             const scene = document.querySelector('a-scene');
-            const video = document.querySelector('video'); // O vídeo da webcam do MindAR
-            const canvas3D = scene.components.screenshot.getCanvas('perspective'); // O 3D
+            const video = document.querySelector('video');
+            const canvas3D = scene.components.screenshot.getCanvas('perspective');
 
-            // Cria um canvas temporário para mesclar as duas imagens
             const canvasFinal = document.createElement('canvas');
             canvasFinal.width = video.videoWidth;
             canvasFinal.height = video.videoHeight;
             const ctx = canvasFinal.getContext('2d');
 
-            // 1. Desenha o vídeo espelhado (como num espelho)
+            // Espelha e desenha vídeo
             ctx.save();
-            ctx.scale(-1, 1); // Inverte horizontalmente
+            ctx.scale(-1, 1);
             ctx.drawImage(video, -canvasFinal.width, 0, canvasFinal.width, canvasFinal.height);
             ctx.restore();
 
-            // 2. Desenha o 3D por cima
+            // Desenha 3D
             ctx.drawImage(canvas3D, 0, 0, canvasFinal.width, canvasFinal.height);
 
-            // 3. Baixa a imagem
+            // Baixa
             const dataURL = canvasFinal.toDataURL('image/png');
-            downloadImage(dataURL, 'minha-foto-ar.png');
+            downloadImage(dataURL, 'filtro-ar.png');
 
-            // 4. Feedback e Redirecionamento
+            // Feedback Visual
             const feedback = document.getElementById('msg-feedback');
             feedback.style.opacity = 1;
             
             setTimeout(() => {
-                // Tenta abrir o app do Instagram
-                // Nota: Em alguns celulares vai para a loja ou home se o app não responder ao link universal
+                // Tenta abrir Instagram
                 window.location.href = "instagram://camera"; 
                 
-                // Fallback: Se não abrir em 1seg, avisa o usuário
+                // Se falhar
                 setTimeout(() => {
-                    feedback.innerText = "Abra o Instagram e poste a foto da galeria!";
+                    feedback.innerText = "Abra o Instagram e use a foto baixada!";
                 }, 2000);
-            }, 1500);
+            }, 1000);
         }
 
         function downloadImage(data, filename) {
