@@ -34,7 +34,7 @@
 
     <div id="scanner-container">
         <h2 style="color:black">Modo Teste 3D</h2>
-        <p class="aviso">Aponte para um QR Code para ver o filtro real.</p>
+        <p class="aviso">Aponte para um QR Code para ver o filtro de chapeu.</p>
         <div id="reader"></div>
         <p id="status" style="color:gray; margin-top:10px">Iniciando câmera...</p>
     </div>
