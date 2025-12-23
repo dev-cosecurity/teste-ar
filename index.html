@@ -10,10 +10,9 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <style>
-        /* === RESET & BASE === */
+        /* === ESTILOS GERAIS (Mantidos iguais para consistência) === */
         body { margin: 0; overflow: hidden; font-family: 'Courier New', Courier, monospace; background: #000; color: white; }
         
-        /* === UI: SCANNER (Tela 1) === */
         #scanner-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #0d0d0d; z-index: 50;
@@ -23,99 +22,77 @@
         .aviso { color: #aaa; text-align: center; margin-bottom: 20px; padding: 0 20px; font-size: 14px; }
         #reader { width: 100%; max-width: 400px; border: 2px solid #00ffff; box-shadow: 0 0 15px #00ffff; border-radius: 5px; overflow: hidden; }
 
-        /* === UI: CONTAINER AR (Tela 2) === */
-        #ar-container { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            z-index: 10; background: black;
-        }
+        #ar-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: black; }
 
-        /* === EFEITO CYBERPUNK (Overlay CSS) === */
-        /* Isso cria a grade azulada e a linha de scan sobre a câmera */
+        /* Overlay Cyberpunk */
         .cyber-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; /* Permite clicar nos botões abaixo */
-            z-index: 20; 
-            background: 
-                linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
-            background-size: 30px 30px;
-            box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.8); 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; 
+            background: linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px; box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.8); 
         }
         .cyber-scanline {
-            position: absolute; width: 100%; height: 4px;
-            background: rgba(0, 255, 255, 0.8);
-            box-shadow: 0 0 15px #00ffff;
-            animation: scan 3s linear infinite;
-            opacity: 0.7;
+            position: absolute; width: 100%; height: 4px; background: rgba(0, 255, 255, 0.8);
+            box-shadow: 0 0 15px #00ffff; animation: scan 3s linear infinite; opacity: 0.7;
         }
         @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
 
-        /* === UI: BOTÕES E FEEDBACK === */
+        /* UI Botões */
         #ar-ui {
-            position: absolute; bottom: 40px; left: 0; width: 100%;
-            z-index: 100; /* Acima de tudo */
-            display: none; 
-            flex-direction: column; align-items: center; justify-content: center;
-            pointer-events: none; 
+            position: absolute; bottom: 40px; left: 0; width: 100%; z-index: 100;
+            display: none; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; 
         }
-
         #btn-foto {
-            pointer-events: auto;
-            width: 80px; height: 80px;
-            background: rgba(0,0,0,0.5);
-            border: 2px solid #00ffff;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
-            position: relative;
-            transition: 0.2s;
+            pointer-events: auto; width: 80px; height: 80px; background: rgba(0,0,0,0.5);
+            border: 2px solid #00ffff; border-radius: 50%; cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); position: relative; transition: 0.2s;
         }
         #btn-foto::after {
-            content: ''; position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 60px; height: 60px; background: white; border-radius: 50%;
-            border: 2px solid #000;
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 60px; height: 60px; background: white; border-radius: 50%; border: 2px solid #000;
         }
         #btn-foto:active { transform: scale(0.9); box-shadow: 0 0 40px #00ffff; }
-
         #msg-feedback {
-            background: rgba(0, 255, 255, 0.2); border: 1px solid #00ffff; 
-            color: #00ffff; padding: 10px 20px; border-radius: 5px;
-            margin-bottom: 20px; font-size: 14px; opacity: 0; transition: opacity 0.5s;
-            text-align: center; text-transform: uppercase; letter-spacing: 1px;
-            text-shadow: 0 0 5px black;
+            background: rgba(0, 255, 255, 0.2); border: 1px solid #00ffff; color: #00ffff; padding: 10px 20px;
+            border-radius: 5px; margin-bottom: 20px; font-size: 14px; opacity: 0; transition: opacity 0.5s;
+            text-align: center; text-transform: uppercase; text-shadow: 0 0 5px black;
         }
-        
         #ar-loading {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8); border: 1px solid #00ffff; color: #00ffff;
-            padding: 20px; border-radius: 5px; font-size: 16px; z-index: 30; display: none;
-            text-align: center; box-shadow: 0 0 20px rgba(0,255,255,0.3);
+            background: rgba(0,0,0,0.8); border: 1px solid #00ffff; color: #00ffff; padding: 20px;
+            border-radius: 5px; font-size: 16px; z-index: 30; display: none; text-align: center;
         }
     </style>
 </head>
 <body>
 
     <div id="ar-ui">
-        <div id="msg-feedback">Processing Image...</div>
+        <div id="msg-feedback">Processing...</div>
         <button id="btn-foto" onclick="tirarFoto()" aria-label="Tirar Foto"></button>
     </div>
 
-    <div id="ar-loading">INITIALIZING SYSTEM...</div>
+    <div id="ar-loading">LOADING 3D ASSETS...</div>
 
     <div id="scanner-container">
-        <h1 class="titulo">SYSTEM ACCESS</h1>
-        <p class="aviso">Scan Protocol QR Code</p>
+        <h1 class="titulo">COSECURITY AR</h1>
+        <p class="aviso">Aponte para o QR Code</p>
         <div id="reader"></div>
-        <p id="status" style="color: #00ffff; margin-top:15px; font-size: 12px; font-family: monospace;">WAITING FOR INPUT...</p>
+        <p id="status" style="color: #00ffff; margin-top:15px; font-size: 12px; font-family: monospace;">SYSTEM READY</p>
     </div>
 
     <div id="ar-container"></div>
 
     <script>
-        // --- CONFIGURAÇÃO ---
-        // IMPORTANTE: Troque esta URL pelo seu LOGO (PNG Transparente)
-        const URL_LOGO = "https://github.com/dev-cosecurity/teste-ar/blob/ac7007cb56917636908c4afe687fd4d98eedb38b/logo3.png"; 
+        // --- CONFIGURAÇÃO DE ARQUIVOS (MUDE AQUI) ---
+        // Coloque o link do seu arquivo .glb aqui
+        const URL_MODELO_GLB = "https://github.com/dev-cosecurity/teste-ar/blob/417967783d6a06d5cb1c81339788af3e76360261/19d5a7c9-a820-49de-ad16-30d8c10f0dde.glb"; 
+        
+        // Coloque o link do seu logo.png aqui
+        const URL_LOGO = "https://github.com/dev-cosecurity/teste-ar/blob/417967783d6a06d5cb1c81339788af3e76360261/logo3.png"; 
+
+        // --- Ajustes Finos (Se a coroa ficar torta ou pequena, mexa aqui) ---
+        const ESCALA_COROA = "1 1 1";  // Tente aumentar para "2 2 2" se ficar pequena
+        const POSICAO_COROA = "0 -0.5 0"; // Sobe ou desce a coroa na cabeça
+        const ROTACAO_COROA = "0 0 0"; // Gira a coroa se estiver de lado
 
         const scannerContainer = document.getElementById('scanner-container');
         const arContainer = document.getElementById('ar-container');
@@ -125,56 +102,45 @@
         let html5QrCode;
         let scannerAtivo = true;
 
-        // --- 1. INICIAR SCANNER ---
+        // 1. SCANNER
         function iniciarScanner() {
             html5QrCode = new Html5Qrcode("reader");
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-            
-            html5QrCode.start({ facingMode: "environment" }, config, 
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, 
                 (decodedText) => {
                     if (scannerAtivo) {
-                        // AQUI VOCÊ PODE VALIDAR O TEXTO DO QR CODE
-                        // Ex: if (decodedText.includes("cosecurity")) { ... }
-                        
-                        console.log("QR Lido:", decodedText);
+                        console.log("QR:", decodedText);
                         scannerAtivo = false;
-                        statusMsg.innerText = "ACCESS GRANTED. LOADING...";
-                        statusMsg.style.color = "#00ffff";
+                        statusMsg.innerText = "MODEL DETECTED. DOWNLOADING...";
                         arLoading.style.display = 'block'; 
-                        
-                        setTimeout(ativarModoAR, 800);
+                        setTimeout(ativarModoAR, 500);
                     }
                 },
-                (errorMessage) => { /* Ignora erros de leitura frames vazios */ }
-            ).catch(err => {
-                statusMsg.innerText = "Camera Error: " + err;
-            });
+                () => {}
+            ).catch(err => { statusMsg.innerText = "Erro Cam: " + err; });
         }
 
-        // --- 2. TRANSIÇÃO PARA AR ---
         function ativarModoAR() {
             html5QrCode.stop().then(() => {
                 scannerContainer.style.display = 'none'; 
                 renderizarCenaAR();
-            }).catch(err => console.error("Erro ao parar scanner", err));
+            }).catch(err => console.error(err));
         }
 
-        // --- 3. RENDERIZAR CENA (CYBERPUNK + 3D) ---
+        // 2. RENDERIZAÇÃO DO MODELO GLB + LOGO
         function renderizarCenaAR() {
-            // A. Injeta o Overlay Visual (CSS)
+            // Overlay CSS
             const overlay = document.createElement('div');
             overlay.className = 'cyber-overlay';
             overlay.innerHTML = '<div class="cyber-scanline"></div>';
             document.body.appendChild(overlay);
 
-            // B. Constrói o HTML do A-Frame
-            // Nota: Usamos 'blending: additive' no logo para efeito holográfico
             arContainer.innerHTML = `
                 <a-scene mindar-face embedded color-space="sRGB" 
                     renderer="colorManagement: true, physicallyCorrectLights" 
                     vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
                     
                     <a-assets>
+                        <a-asset-item id="modelo-coroa" src="${URL_MODELO_GLB}"></a-asset-item>
                         <img id="logo-tex" src="${URL_LOGO}">
                     </a-assets>
 
@@ -182,111 +148,84 @@
                     
                     <a-entity mindar-face-target="anchorIndex: 10">
                         
-                        <a-entity position="0 0.8 0" scale="0.1 0.1 0.1" 
-                            animation="property: scale; from: 0 0 0; to: 0.55 0.55 0.55; dur: 1200; easing: easeOutElastic">
-                            
-                            <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear">
-                                <a-torus radius="0.8" radius-tubular="0.04" segments-tubular="64"
-                                    material="color: #00ffff; emissive: #00ffff; emissiveIntensity: 2; opacity: 0.9"></a-torus>
-                                
-                                <a-torus radius="0.6" radius-tubular="0.02" rotation="90 0 0"
-                                    material="color: #ff00ff; emissive: #ff00ff; emissiveIntensity: 1.5"></a-torus>
+                        <a-entity scale="0.1 0.1 0.1" 
+                            animation="property: scale; from: 0 0 0; to: 1 1 1; dur: 1500; easing: easeOutElastic">
 
-                                <a-cone position="0 0.8 -0.8" rotation="-15 0 0" radius-bottom="0.1" height="0.8" material="color: #00ffff; emissive: #00ffff; emissiveIntensity: 2"></a-cone>
-                                <a-cone position="0 0.8 0.8" rotation="15 0 0" radius-bottom="0.1" height="0.8" material="color: #00ffff; emissive: #00ffff; emissiveIntensity: 2"></a-cone>
-                                <a-cone position="-0.8 0.8 0" rotation="0 0 15" radius-bottom="0.1" height="0.8" material="color: #00ffff; emissive: #00ffff; emissiveIntensity: 2"></a-cone>
-                                <a-cone position="0.8 0.8 0" rotation="0 0 -15" radius-bottom="0.1" height="0.8" material="color: #00ffff; emissive: #00ffff; emissiveIntensity: 2"></a-cone>
-                            </a-entity>
+                            <a-gltf-model src="#modelo-coroa" 
+                                position="${POSICAO_COROA}" 
+                                scale="${ESCALA_COROA}" 
+                                rotation="${ROTACAO_COROA}"
+                                animation="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear">
+                            </a-gltf-model>
 
-                            <a-entity position="0 1.6 0" 
-                                animation="property: rotation; to: 0 -360 0; loop: true; dur: 7000; easing: linear">
-                                
+                            <a-entity position="0 1.2 0" animation="property: rotation; to: 0 -360 0; loop: true; dur: 7000; easing: linear">
                                 <a-image src="#logo-tex" width="1.5" height="1.5"
-                                    material="transparent: true; opacity: 0.95; blending: additive; side: double; depthTest: false">
+                                    material="transparent: true; opacity: 0.9; blending: additive; side: double; depthTest: false">
                                 </a-image>
-                                
                                 <a-image src="#logo-tex" width="1.8" height="1.8"
-                                    material="transparent: true; opacity: 0.4; blending: additive; side: double; depthTest: false"
+                                    material="transparent: true; opacity: 0.3; blending: additive; side: double; depthTest: false"
                                     position="0 0 -0.1">
                                 </a-image>
                             </a-entity>
 
-                            <a-light type="point" color="#00ffff" intensity="2" distance="4" position="0 -1 0"></a-light>
+                            <a-light type="ambient" color="#ffffff" intensity="1"></a-light>
+                            <a-light type="point" color="#00ffff" intensity="2" distance="5" position="0 2 2"></a-light>
+                            <a-light type="point" color="#ff00ff" intensity="2" distance="5" position="0 -2 2"></a-light>
 
                         </a-entity>
                     </a-entity>
                 </a-scene>
             `;
 
-            // Monitora carregamento da cena
+            // Checagem de segurança se a cena carregou
             const checkScene = setInterval(() => {
                 const scene = document.querySelector('a-scene');
                 if (scene && scene.hasLoaded) {
                     clearInterval(checkScene);
-                    console.log("Sistema Cyberpunk Online.");
+                    console.log("Cena carregada com GLB externo.");
                     arLoading.style.display = 'none';
                     arUI.style.display = 'flex';
                 }
             }, 500);
         }
 
-        // --- 4. CAPTURA DE FOTO ---
+        // 3. FOTO
         function tirarFoto() {
             const scene = document.querySelector('a-scene');
             const video = document.querySelector('video');
-            
-            // Pega o Canvas WebGL (3D)
             const canvas3D = scene.components.screenshot.getCanvas('perspective');
 
-            // Cria Canvas Final
             const canvasFinal = document.createElement('canvas');
             canvasFinal.width = video.videoWidth;
             canvasFinal.height = video.videoHeight;
             const ctx = canvasFinal.getContext('2d');
 
-            // 1. Desenha Vídeo (Espelhado)
             ctx.save();
-            ctx.scale(-1, 1);
+            ctx.scale(-1, 1); // Espelha
             ctx.drawImage(video, -canvasFinal.width, 0, canvasFinal.width, canvasFinal.height);
             ctx.restore();
-
-            // 2. Desenha o 3D por cima
             ctx.drawImage(canvas3D, 0, 0, canvasFinal.width, canvasFinal.height);
 
-            // 3. (Opcional) Marca d'água na foto
-            // ctx.font = "30px Courier New";
-            // ctx.fillStyle = "#00ffff";
-            // ctx.fillText("COSECURITY AR", 50, canvasFinal.height - 50);
-
-            // Salva
             const dataURL = canvasFinal.toDataURL('image/png');
-            downloadImage(dataURL, 'cosecurity-cyberpunk.png');
+            downloadImage(dataURL, 'cosecurity-ar.png');
 
-            // Feedback
             const feedback = document.getElementById('msg-feedback');
-            feedback.innerText = "IMAGE SAVED TO GALLERY";
+            feedback.innerText = "IMAGE SAVED!";
             feedback.style.opacity = 1;
             
             setTimeout(() => {
                 window.location.href = "instagram://camera";
-                setTimeout(() => { 
-                    feedback.innerText = "OPEN INSTAGRAM TO POST"; 
-                }, 1500);
+                setTimeout(() => feedback.innerText = "POST ON INSTAGRAM", 1500);
             }, 1000);
         }
 
         function downloadImage(data, filename) {
             const a = document.createElement('a');
-            a.href = data;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            a.href = data; a.download = filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
         }
 
-        // Inicializa sistema
         iniciarScanner();
-
     </script>
 </body>
 </html>
