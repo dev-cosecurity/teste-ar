@@ -10,224 +10,698 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <style>
-        /* === ESTILOS GERAIS (Mantidos iguais para consistência) === */
-        body { margin: 0; overflow: hidden; font-family: 'Courier New', Courier, monospace; background: #000; color: white; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
-        #scanner-container {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #0d0d0d; z-index: 50;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        body { 
+            font-family: 'Courier New', Courier, monospace; 
+            background: #000; 
+            color: white; 
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
         }
-        .titulo { color: #00ffff; font-size: 24px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px #00ffff; }
-        .aviso { color: #aaa; text-align: center; margin-bottom: 20px; padding: 0 20px; font-size: 14px; }
-        #reader { width: 100%; max-width: 400px; border: 2px solid #00ffff; box-shadow: 0 0 15px #00ffff; border-radius: 5px; overflow: hidden; }
+        
+        /* === SCANNER CONTAINER === */
+        .scanner-view {
+            position: fixed;
+            inset: 0;
+            background: #0d0d0d;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
 
-        #ar-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: black; }
+        .scanner-view.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .scanner-header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
 
-        /* Overlay Cyberpunk */
+        @keyframes glow {
+            from { text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff; }
+            to { text-shadow: 0 0 20px #00ffff, 0 0 30px #00ffff, 0 0 40px #00ffff; }
+        }
+        
+        .scanner-title {
+            color: #00ffff;
+            font-size: clamp(20px, 5vw, 28px);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        
+        .scanner-subtitle {
+            color: #aaa;
+            font-size: clamp(12px, 3vw, 14px);
+            line-height: 1.5;
+        }
+        
+        #reader {
+            width: 100%;
+            max-width: 400px;
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .scanner-status {
+            color: #00ffff;
+            margin-top: 20px;
+            font-size: 12px;
+            font-family: monospace;
+            text-align: center;
+            min-height: 20px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* === AR CONTAINER === */
+        .ar-view {
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            background: black;
+            display: none;
+        }
+
+        .ar-view.active {
+            display: block;
+        }
+
+        /* === CYBERPUNK OVERLAY === */
         .cyber-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; 
-            background: linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
-            background-size: 30px 30px; box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.8); 
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 20;
+            background: 
+                linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.9);
+            opacity: 0;
+            transition: opacity 0.8s ease;
         }
-        .cyber-scanline {
-            position: absolute; width: 100%; height: 4px; background: rgba(0, 255, 255, 0.8);
-            box-shadow: 0 0 15px #00ffff; animation: scan 3s linear infinite; opacity: 0.7;
-        }
-        @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
 
-        /* UI Botões */
-        #ar-ui {
-            position: absolute; bottom: 40px; left: 0; width: 100%; z-index: 100;
-            display: none; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; 
+        .cyber-overlay.active {
+            opacity: 1;
         }
-        #btn-foto {
-            pointer-events: auto; width: 80px; height: 80px; background: rgba(0,0,0,0.5);
-            border: 2px solid #00ffff; border-radius: 50%; cursor: pointer;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); position: relative; transition: 0.2s;
+        
+        .cyber-scanline {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(transparent, rgba(0, 255, 255, 0.8), transparent);
+            box-shadow: 0 0 20px #00ffff;
+            animation: scan 4s linear infinite;
         }
-        #btn-foto::after {
-            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 60px; height: 60px; background: white; border-radius: 50%; border: 2px solid #000;
+        
+        @keyframes scan {
+            0% { top: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
         }
-        #btn-foto:active { transform: scale(0.9); box-shadow: 0 0 40px #00ffff; }
-        #msg-feedback {
-            background: rgba(0, 255, 255, 0.2); border: 1px solid #00ffff; color: #00ffff; padding: 10px 20px;
-            border-radius: 5px; margin-bottom: 20px; font-size: 14px; opacity: 0; transition: opacity 0.5s;
-            text-align: center; text-transform: uppercase; text-shadow: 0 0 5px black;
+
+        /* === AR UI === */
+        .ar-controls {
+            position: fixed;
+            bottom: 40px;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            pointer-events: none;
         }
-        #ar-loading {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8); border: 1px solid #00ffff; color: #00ffff; padding: 20px;
-            border-radius: 5px; font-size: 16px; z-index: 30; display: none; text-align: center;
+
+        .ar-controls.active {
+            display: flex;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .feedback-message {
+            background: rgba(0, 255, 255, 0.2);
+            border: 1px solid #00ffff;
+            color: #00ffff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: center;
+            text-transform: uppercase;
+            text-shadow: 0 0 8px black;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .feedback-message.show {
+            opacity: 1;
+        }
+        
+        .capture-button {
+            pointer-events: auto;
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 3px solid #00ffff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 255, 0.5),
+                inset 0 0 20px rgba(0, 255, 255, 0.1);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .capture-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 50%;
+            border: 3px solid #000;
+            transition: all 0.2s ease;
+        }
+
+        .capture-button:hover {
+            transform: scale(1.05);
+            box-shadow: 
+                0 0 30px rgba(0, 255, 255, 0.8),
+                inset 0 0 30px rgba(0, 255, 255, 0.2);
+        }
+
+        .capture-button:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 50px #00ffff;
+        }
+
+        .capture-button:active::before {
+            width: 50px;
+            height: 50px;
+        }
+
+        /* === LOADING === */
+        .loading-overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ffff;
+            color: #00ffff;
+            padding: 30px 40px;
+            border-radius: 10px;
+            font-size: 16px;
+            z-index: 30;
+            display: none;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .loading-overlay.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(0, 255, 255, 0.3);
+            border-top-color: #00ffff;
+            border-radius: 50%;
+            margin: 15px auto 0;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* === ERROR STATE === */
+        .error-message {
+            color: #ff0066;
+            background: rgba(255, 0, 102, 0.1);
+            border: 1px solid #ff0066;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            font-size: 12px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
         }
     </style>
 </head>
 <body>
 
-    <div id="ar-ui">
-        <div id="msg-feedback">Processing...</div>
-        <button id="btn-foto" onclick="tirarFoto()" aria-label="Tirar Foto"></button>
-    </div>
-
-    <div id="ar-loading">LOADING 3D ASSETS...</div>
-
-    <div id="scanner-container">
-        <h1 class="titulo">COSECURITY AR</h1>
-        <p class="aviso">Teste 1</p>
+    <!-- Scanner View -->
+    <div class="scanner-view" id="scannerView">
+        <div class="scanner-header">
+            <h1 class="scanner-title">COSECURITY AR</h1>
+            <p class="scanner-subtitle">Escaneie o QR Code para ativar a experiência AR</p>
+        </div>
         <div id="reader"></div>
-        <p id="status" style="color: #00ffff; margin-top:15px; font-size: 12px; font-family: monospace;">SYSTEM READY</p>
+        <div class="scanner-status" id="scannerStatus">SYSTEM READY</div>
+        <div class="error-message" id="errorMessage"></div>
     </div>
 
-    <div id="ar-container"></div>
+    <!-- AR View -->
+    <div class="ar-view" id="arView"></div>
+
+    <!-- Cyberpunk Overlay -->
+    <div class="cyber-overlay" id="cyberOverlay">
+        <div class="cyber-scanline"></div>
+    </div>
+
+    <!-- AR Controls -->
+    <div class="ar-controls" id="arControls">
+        <div class="feedback-message" id="feedbackMessage">Processing...</div>
+        <button class="capture-button" id="captureButton" aria-label="Capturar Foto"></button>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div>LOADING 3D ASSETS...</div>
+        <div class="loading-spinner"></div>
+    </div>
 
     <script>
-        // --- CONFIGURAÇÃO DE ARQUIVOS (MUDE AQUI) ---
-        // Coloque o link do seu arquivo .glb aqui
-        const URL_MODELO_GLB = "https://dev-cosecurity.github.io/teste-ar/19d5a7c9-a820-49de-ad16-30d8c10f0dde.glb"; 
-        
-        // Coloque o link do seu logo.png aqui
-        const URL_LOGO = "https://github.com/dev-cosecurity/teste-ar/blob/417967783d6a06d5cb1c81339788af3e76360261/logo3.png"; 
+        // ==================== CONFIGURAÇÃO ====================
+        const CONFIG = {
+            modelo: "https://dev-cosecurity.github.io/teste-ar/19d5a7c9-a820-49de-ad16-30d8c10f0dde.glb",
+            logo: "https://raw.githubusercontent.com/dev-cosecurity/teste-ar/417967783d6a06d5cb1c81339788af3e76360261/logo3.png",
+            coroa: {
+                escala: "1 1 1",
+                posicao: "0 -1.5 0",
+                rotacao: "0 0 0"
+            },
+            qrScanner: {
+                fps: 10,
+                qrbox: { width: 250, height: 250 }
+            }
+        };
 
-        // --- Ajustes Finos (Se a coroa ficar torta ou pequena, mexa aqui) ---
-        const ESCALA_COROA = "1 1 1";  // Tente aumentar para "2 2 2" se ficar pequena
-        const POSICAO_COROA = "0 -1.5 0"; // Sobe ou desce a coroa na cabeça
-        const ROTACAO_COROA = "0 0 0"; // Gira a coroa se estiver de lado
+        // ==================== ESTADO DA APLICAÇÃO ====================
+        const AppState = {
+            scanner: null,
+            isScanning: true,
+            isARActive: false,
+            sceneLoaded: false
+        };
 
-        const scannerContainer = document.getElementById('scanner-container');
-        const arContainer = document.getElementById('ar-container');
-        const arLoading = document.getElementById('ar-loading');
-        const arUI = document.getElementById('ar-ui');
-        const statusMsg = document.getElementById('status');
-        let html5QrCode;
-        let scannerAtivo = true;
+        // ==================== ELEMENTOS DOM ====================
+        const Elements = {
+            scannerView: document.getElementById('scannerView'),
+            arView: document.getElementById('arView'),
+            cyberOverlay: document.getElementById('cyberOverlay'),
+            arControls: document.getElementById('arControls'),
+            loadingOverlay: document.getElementById('loadingOverlay'),
+            scannerStatus: document.getElementById('scannerStatus'),
+            errorMessage: document.getElementById('errorMessage'),
+            feedbackMessage: document.getElementById('feedbackMessage'),
+            captureButton: document.getElementById('captureButton')
+        };
 
-        // 1. SCANNER
-        function iniciarScanner() {
-            html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, 
-                (decodedText) => {
-                    if (scannerAtivo) {
-                        console.log("QR:", decodedText);
-                        scannerAtivo = false;
-                        statusMsg.innerText = "MODEL DETECTED. DOWNLOADING...";
-                        arLoading.style.display = 'block'; 
-                        setTimeout(ativarModoAR, 500);
-                    }
-                },
-                () => {}
-            ).catch(err => { statusMsg.innerText = "Erro Cam: " + err; });
-        }
-
-        function ativarModoAR() {
-            html5QrCode.stop().then(() => {
-                scannerContainer.style.display = 'none'; 
-                renderizarCenaAR();
-            }).catch(err => console.error(err));
-        }
-
-        // 2. RENDERIZAÇÃO DO MODELO GLB + LOGO
-        function renderizarCenaAR() {
-            // Overlay CSS
-            const overlay = document.createElement('div');
-            overlay.className = 'cyber-overlay';
-            overlay.innerHTML = '<div class="cyber-scanline"></div>';
-            document.body.appendChild(overlay);
-
-            arContainer.innerHTML = `
-                <a-scene mindar-face embedded color-space="sRGB" 
-                    renderer="colorManagement: true, physicallyCorrectLights" 
-                    vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
-                    
-                    <a-assets>
-                        <a-asset-item id="modelo-coroa" src="${URL_MODELO_GLB}"></a-asset-item>
-                        <img id="logo-tex" src="${URL_LOGO}">
-                    </a-assets>
-
-                    <a-camera active="false" position="0 0 0"></a-camera>
-                    
-                    <a-entity mindar-face-target="anchorIndex: 10">
-                        
-                        <a-entity scale="0.1 0.1 0.1" 
-                            animation="property: scale; from: 0 0 0; to: 1 1 1; dur: 1500; easing: easeOutElastic">
-
-                            <a-gltf-model src="#modelo-coroa" 
-                                position="${POSICAO_COROA}" 
-                                scale="${ESCALA_COROA}" 
-                                rotation="${ROTACAO_COROA}"
-                                animation="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear">
-                            </a-gltf-model>
-
-                            <a-entity position="0 1.2 0" animation="property: rotation; to: 0 -360 0; loop: true; dur: 7000; easing: linear">
-                                <a-image src="#logo-tex" width="1.5" height="1.5"
-                                    material="transparent: true; opacity: 0.9; blending: additive; side: double; depthTest: false">
-                                </a-image>
-                                <a-image src="#logo-tex" width="1.8" height="1.8"
-                                    material="transparent: true; opacity: 0.3; blending: additive; side: double; depthTest: false"
-                                    position="0 0 -0.1">
-                                </a-image>
-                            </a-entity>
-
-                            <a-light type="ambient" color="#ffffff" intensity="1"></a-light>
-                            <a-light type="point" color="#00ffff" intensity="2" distance="5" position="0 2 2"></a-light>
-                            <a-light type="point" color="#ff00ff" intensity="2" distance="5" position="0 -2 2"></a-light>
-
-                        </a-entity>
-                    </a-entity>
-                </a-scene>
-            `;
-
-            // Checagem de segurança se a cena carregou
-            const checkScene = setInterval(() => {
-                const scene = document.querySelector('a-scene');
-                if (scene && scene.hasLoaded) {
-                    clearInterval(checkScene);
-                    console.log("Cena carregada com GLB externo.");
-                    arLoading.style.display = 'none';
-                    arUI.style.display = 'flex';
+        // ==================== UTILIDADES ====================
+        const Utils = {
+            showElement(element, addClass = 'active') {
+                if (element.classList) {
+                    element.classList.add(addClass);
+                } else {
+                    element.style.display = 'block';
                 }
-            }, 500);
-        }
+            },
 
-        // 3. FOTO
-        function tirarFoto() {
-            const scene = document.querySelector('a-scene');
-            const video = document.querySelector('video');
-            const canvas3D = scene.components.screenshot.getCanvas('perspective');
+            hideElement(element, removeClass = 'active') {
+                if (element.classList) {
+                    element.classList.remove(removeClass);
+                } else {
+                    element.style.display = 'none';
+                }
+            },
 
-            const canvasFinal = document.createElement('canvas');
-            canvasFinal.width = video.videoWidth;
-            canvasFinal.height = video.videoHeight;
-            const ctx = canvasFinal.getContext('2d');
+            showFeedback(message, duration = 2000) {
+                Elements.feedbackMessage.textContent = message;
+                Elements.feedbackMessage.classList.add('show');
+                setTimeout(() => {
+                    Elements.feedbackMessage.classList.remove('show');
+                }, duration);
+            },
 
-            ctx.save();
-            ctx.scale(-1, 1); // Espelha
-            ctx.drawImage(video, -canvasFinal.width, 0, canvasFinal.width, canvasFinal.height);
-            ctx.restore();
-            ctx.drawImage(canvas3D, 0, 0, canvasFinal.width, canvasFinal.height);
+            showError(message) {
+                Elements.errorMessage.textContent = message;
+                Elements.errorMessage.classList.add('show');
+                setTimeout(() => {
+                    Elements.errorMessage.classList.remove('show');
+                }, 5000);
+            },
 
-            const dataURL = canvasFinal.toDataURL('image/png');
-            downloadImage(dataURL, 'cosecurity-ar.png');
+            updateStatus(message) {
+                Elements.scannerStatus.textContent = message;
+            }
+        };
 
-            const feedback = document.getElementById('msg-feedback');
-            feedback.innerText = "IMAGE SAVED!";
-            feedback.style.opacity = 1;
-            
-            setTimeout(() => {
-                window.location.href = "instagram://camera";
-                setTimeout(() => feedback.innerText = "POST ON INSTAGRAM", 1500);
-            }, 1000);
-        }
+        // ==================== QR SCANNER ====================
+        const QRScanner = {
+            init() {
+                try {
+                    AppState.scanner = new Html5Qrcode("reader");
+                    this.start();
+                } catch (error) {
+                    console.error("Erro ao inicializar scanner:", error);
+                    Utils.showError("Erro ao acessar câmera. Verifique as permissões.");
+                }
+            },
 
-        function downloadImage(data, filename) {
-            const a = document.createElement('a');
-            a.href = data; a.download = filename;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        }
+            start() {
+                AppState.scanner.start(
+                    { facingMode: "environment" },
+                    CONFIG.qrScanner,
+                    this.onScanSuccess.bind(this),
+                    this.onScanError.bind(this)
+                ).catch(error => {
+                    console.error("Erro ao iniciar scanner:", error);
+                    Utils.showError("Não foi possível iniciar a câmera.");
+                });
+            },
 
-        iniciarScanner();
+            onScanSuccess(decodedText) {
+                if (!AppState.isScanning) return;
+
+                console.log("QR Code detectado:", decodedText);
+                AppState.isScanning = false;
+                Utils.updateStatus("QR DETECTED. LOADING AR...");
+                Utils.showElement(Elements.loadingOverlay, 'active');
+
+                setTimeout(() => {
+                    this.stop();
+                }, 300);
+            },
+
+            onScanError(error) {
+                // Silencioso - erros de scan são normais
+            },
+
+            stop() {
+                AppState.scanner.stop()
+                    .then(() => {
+                        Utils.hideElement(Elements.scannerView, 'hidden');
+                        AREngine.init();
+                    })
+                    .catch(error => {
+                        console.error("Erro ao parar scanner:", error);
+                        Utils.showError("Erro ao iniciar AR.");
+                    });
+            }
+        };
+
+        // ==================== AR ENGINE ====================
+        const AREngine = {
+            init() {
+                this.createScene();
+                this.waitForSceneLoad();
+            },
+
+            createScene() {
+                Utils.showElement(Elements.cyberOverlay, 'active');
+
+                Elements.arView.innerHTML = `
+                    <a-scene 
+                        mindar-face 
+                        embedded 
+                        color-space="sRGB" 
+                        renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true" 
+                        vr-mode-ui="enabled: false" 
+                        device-orientation-permission-ui="enabled: false"
+                        loading-screen="enabled: false">
+                        
+                        <a-assets>
+                            <a-asset-item id="modelo-coroa" src="${CONFIG.modelo}"></a-asset-item>
+                            <img id="logo-tex" src="${CONFIG.logo}" crossorigin="anonymous">
+                        </a-assets>
+
+                        <a-camera active="false" position="0 0 0"></a-camera>
+                        
+                        <a-entity mindar-face-target="anchorIndex: 10">
+                            
+                            <!-- Container principal com animação de entrada -->
+                            <a-entity 
+                                id="crown-container"
+                                scale="0.1 0.1 0.1" 
+                                animation="property: scale; from: 0 0 0; to: 0.1 0.1 0.1; dur: 1200; easing: easeOutElastic; delay: 200">
+
+                                <!-- Modelo da Coroa -->
+                                <a-gltf-model 
+                                    src="#modelo-coroa" 
+                                    position="${CONFIG.coroa.posicao}" 
+                                    scale="${CONFIG.coroa.escala}" 
+                                    rotation="${CONFIG.coroa.rotacao}"
+                                    material="color: #0066ff; metalness: 0.8; roughness: 0.2"
+                                    animation__rotate="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear"
+                                    animation__float="property: position; from: ${CONFIG.coroa.posicao}; to: 0 -1.3 0; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
+                                </a-gltf-model>
+
+                                <!-- Logo com efeitos -->
+                                <a-entity 
+                                    position="0 1.2 0" 
+                                    animation__rotate="property: rotation; to: 0 -360 0; loop: true; dur: 8000; easing: linear"
+                                    animation__float="property: position; from: 0 1.2 0; to: 0 1.4 0; dir: alternate; loop: true; dur: 3000; easing: easeInOutSine">
+                                    
+                                    <!-- Logo principal -->
+                                    <a-image 
+                                        src="#logo-tex" 
+                                        width="1.5" 
+                                        height="1.5"
+                                        material="transparent: true; opacity: 0.95; blending: additive; side: double; depthTest: false"
+                                        animation__pulse="property: scale; from: 1 1 1; to: 1.1 1.1 1.1; dir: alternate; loop: true; dur: 1500; easing: easeInOutSine">
+                                    </a-image>
+                                    
+                                    <!-- Logo glow -->
+                                    <a-image 
+                                        src="#logo-tex" 
+                                        width="2" 
+                                        height="2"
+                                        material="transparent: true; opacity: 0.3; blending: additive; side: double; depthTest: false"
+                                        position="0 0 -0.1"
+                                        animation__glow="property: components.material.material.opacity; from: 0.2; to: 0.5; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
+                                    </a-image>
+                                </a-entity>
+
+                                <!-- Partículas decorativas -->
+                                ${this.createParticles()}
+
+                                <!-- Iluminação -->
+                                <a-light type="ambient" color="#ffffff" intensity="1.2"></a-light>
+                                <a-light type="point" color="#0066ff" intensity="3" distance="5" position="0 2 2"></a-light>
+                                <a-light type="point" color="#00ccff" intensity="2.5" distance="5" position="0 -2 2"></a-light>
+                                <a-light type="point" color="#0099ff" intensity="2" distance="4" position="2 0 1"></a-light>
+
+                            </a-entity>
+                        </a-entity>
+                    </a-scene>
+                `;
+
+                Utils.showElement(Elements.arView, 'active');
+            },
+
+            createParticles() {
+                let particles = '';
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    const x = Math.cos(angle) * 0.8;
+                    const z = Math.sin(angle) * 0.8;
+                    const delay = i * 150;
+                    
+                    particles += `
+                        <a-sphere 
+                            radius="0.05" 
+                            color="#00ffff"
+                            position="${x} 0.5 ${z}"
+                            material="emissive: #00ffff; emissiveIntensity: 1; opacity: 0.7"
+                            animation__orbit="property: position; to: ${x} 1.5 ${z}; dir: alternate; loop: true; dur: 3000; delay: ${delay}; easing: easeInOutSine"
+                            animation__fade="property: components.material.material.opacity; from: 0.3; to: 0.9; dir: alternate; loop: true; dur: 2000; delay: ${delay}; easing: easeInOutSine">
+                        </a-sphere>
+                    `;
+                }
+                return particles;
+            },
+
+            waitForSceneLoad() {
+                const checkInterval = setInterval(() => {
+                    const scene = document.querySelector('a-scene');
+                    if (scene && scene.hasLoaded) {
+                        clearInterval(checkInterval);
+                        this.onSceneReady();
+                    }
+                }, 100);
+
+                // Timeout de segurança
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    if (!AppState.sceneLoaded) {
+                        console.warn("Scene load timeout");
+                        this.onSceneReady();
+                    }
+                }, 10000);
+            },
+
+            onSceneReady() {
+                console.log("✓ Cena AR carregada com sucesso");
+                AppState.sceneLoaded = true;
+                AppState.isARActive = true;
+
+                Utils.hideElement(Elements.loadingOverlay, 'active');
+                Utils.showElement(Elements.arControls, 'active');
+                Utils.showFeedback("AR ATIVADO", 2000);
+            }
+        };
+
+        // ==================== CAPTURA DE FOTO ====================
+        const PhotoCapture = {
+            capture() {
+                if (!AppState.isARActive) {
+                    Utils.showFeedback("AR não está ativo", 2000);
+                    return;
+                }
+
+                try {
+                    const scene = document.querySelector('a-scene');
+                    const video = document.querySelector('video');
+                    
+                    if (!scene || !video) {
+                        throw new Error("Componentes AR não encontrados");
+                    }
+
+                    const canvas3D = scene.components.screenshot.getCanvas('perspective');
+                    const finalCanvas = this.createCompositeImage(video, canvas3D);
+                    const dataURL = finalCanvas.toDataURL('image/png');
+
+                    this.downloadImage(dataURL, `cosecurity-ar-${Date.now()}.png`);
+                    this.showSuccessSequence();
+
+                } catch (error) {
+                    console.error("Erro ao capturar foto:", error);
+                    Utils.showFeedback("Erro ao capturar foto", 2000);
+                }
+            },
+
+            createCompositeImage(video, canvas3D) {
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth || 1280;
+                canvas.height = video.videoHeight || 720;
+                const ctx = canvas.getContext('2d');
+
+                // Espelhar vídeo
+                ctx.save();
+                ctx.scale(-1, 1);
+                ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+                ctx.restore();
+
+                // Sobrepor renderização 3D
+                ctx.drawImage(canvas3D, 0, 0, canvas.width, canvas.height);
+
+                return canvas;
+            },
+
+            downloadImage(dataURL, filename) {
+                const link = document.createElement('a');
+                link.href = dataURL;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            },
+
+            showSuccessSequence() {
+                Utils.showFeedback("IMAGEM SALVA!", 1500);
+
+                setTimeout(() => {
+                    Utils.showFeedback("COMPARTILHE NO INSTAGRAM!", 3000);
+                    
+                    // Tentar abrir Instagram (mobile)
+                    const instagramURL = "instagram://camera";
+                    window.location.href = instagramURL;
+                    
+                    // Fallback para web
+                    setTimeout(() => {
+                        window.open('https://www.instagram.com/', '_blank');
+                    }, 1000);
+                }, 1500);
+            }
+        };
+
+        // ==================== EVENT LISTENERS ====================
+        Elements.captureButton.addEventListener('click', () => {
+            PhotoCapture.capture();
+        });
+
+        // Prevenir zoom no mobile
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // ==================== INICIALIZAÇÃO ====================
+        window.addEventListener('load', () => {
+            console.log("🚀 Cosecurity AR inicializado");
+            QRScanner.init();
+        });
+
+        // Tratamento de erros globais
+        window.addEventListener('error', (e) => {
+            console.error('Erro global:', e.error);
+        });
+
     </script>
 </body>
 </html>
-
-
