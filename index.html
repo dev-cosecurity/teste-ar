@@ -21,8 +21,8 @@
             width: 100vw;
         }
         
-        /* === SCANNER CONTAINER === */
-        .scanner-view {
+        /* === SCANNER === */
+        #scanner-container {
             position: fixed;
             inset: 0;
             background: #0d0d0d;
@@ -32,13 +32,10 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
-            opacity: 1;
-            transition: opacity 0.5s ease;
         }
 
-        .scanner-view.hidden {
-            opacity: 0;
-            pointer-events: none;
+        #scanner-container.hidden {
+            display: none;
         }
         
         .scanner-header {
@@ -54,7 +51,7 @@
         
         .scanner-title {
             color: #00ffff;
-            font-size: clamp(20px, 5vw, 28px);
+            font-size: 28px;
             margin-bottom: 10px;
             text-transform: uppercase;
             letter-spacing: 3px;
@@ -62,7 +59,7 @@
         
         .scanner-subtitle {
             color: #aaa;
-            font-size: clamp(12px, 3vw, 14px);
+            font-size: 14px;
             line-height: 1.5;
         }
         
@@ -76,13 +73,11 @@
             background: #000;
         }
 
-        .scanner-status {
+        #status {
             color: #00ffff;
             margin-top: 20px;
             font-size: 12px;
-            font-family: monospace;
             text-align: center;
-            min-height: 20px;
             animation: pulse 1.5s ease-in-out infinite;
         }
 
@@ -91,8 +86,20 @@
             50% { opacity: 0.5; }
         }
 
-        /* === AR CONTAINER === */
-        .ar-view {
+        #error-msg {
+            color: #ff0066;
+            background: rgba(255, 0, 102, 0.1);
+            border: 1px solid #ff0066;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            font-size: 12px;
+            display: none;
+            max-width: 400px;
+        }
+
+        /* === AR === */
+        #ar-container {
             position: fixed;
             inset: 0;
             z-index: 10;
@@ -100,11 +107,11 @@
             display: none;
         }
 
-        .ar-view.active {
+        #ar-container.active {
             display: block;
         }
 
-        /* === CYBERPUNK OVERLAY === */
+        /* === OVERLAY === */
         .cyber-overlay {
             position: fixed;
             inset: 0;
@@ -115,12 +122,11 @@
                 linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
             background-size: 30px 30px;
             box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.9);
-            opacity: 0;
-            transition: opacity 0.8s ease;
+            display: none;
         }
 
         .cyber-overlay.active {
-            opacity: 1;
+            display: block;
         }
         
         .cyber-scanline {
@@ -133,14 +139,12 @@
         }
         
         @keyframes scan {
-            0% { top: 0%; opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
+            0% { top: 0%; }
+            100% { top: 100%; }
         }
 
-        /* === AR UI === */
-        .ar-controls {
+        /* === CONTROLES === */
+        #ar-ui {
             position: fixed;
             bottom: 40px;
             left: 0;
@@ -153,23 +157,17 @@
             pointer-events: none;
         }
 
-        .ar-controls.active {
+        #ar-ui.active {
             display: flex;
             animation: slideUp 0.6s ease-out;
         }
 
         @keyframes slideUp {
-            from { 
-                opacity: 0;
-                transform: translateY(50px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
-        .feedback-message {
+        #feedback {
             background: rgba(0, 255, 255, 0.2);
             border: 1px solid #00ffff;
             color: #00ffff;
@@ -178,17 +176,16 @@
             font-size: 14px;
             text-align: center;
             text-transform: uppercase;
-            text-shadow: 0 0 8px black;
             opacity: 0;
-            transition: opacity 0.4s ease;
+            transition: opacity 0.4s;
             backdrop-filter: blur(10px);
         }
 
-        .feedback-message.show {
+        #feedback.show {
             opacity: 1;
         }
         
-        .capture-button {
+        #btn-foto {
             pointer-events: auto;
             width: 80px;
             height: 80px;
@@ -196,14 +193,12 @@
             border: 3px solid #00ffff;
             border-radius: 50%;
             cursor: pointer;
-            box-shadow: 
-                0 0 20px rgba(0, 255, 255, 0.5),
-                inset 0 0 20px rgba(0, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
             position: relative;
-            transition: all 0.3s ease;
+            transition: all 0.3s;
         }
 
-        .capture-button::before {
+        #btn-foto::before {
             content: '';
             position: absolute;
             top: 50%;
@@ -214,28 +209,20 @@
             background: white;
             border-radius: 50%;
             border: 3px solid #000;
-            transition: all 0.2s ease;
+            transition: all 0.2s;
         }
 
-        .capture-button:hover {
-            transform: scale(1.05);
-            box-shadow: 
-                0 0 30px rgba(0, 255, 255, 0.8),
-                inset 0 0 30px rgba(0, 255, 255, 0.2);
-        }
-
-        .capture-button:active {
+        #btn-foto:active {
             transform: scale(0.95);
-            box-shadow: 0 0 50px #00ffff;
         }
 
-        .capture-button:active::before {
+        #btn-foto:active::before {
             width: 50px;
             height: 50px;
         }
 
         /* === LOADING === */
-        .loading-overlay {
+        #loading {
             position: fixed;
             top: 50%;
             left: 50%;
@@ -250,20 +237,13 @@
             display: none;
             text-align: center;
             box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
-            backdrop-filter: blur(10px);
         }
 
-        .loading-overlay.active {
+        #loading.active {
             display: block;
-            animation: fadeIn 0.3s ease;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
-            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-        }
-
-        .loading-spinner {
+        .spinner {
             width: 40px;
             height: 40px;
             border: 3px solid rgba(0, 255, 255, 0.3);
@@ -276,365 +256,243 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-
-        /* === ERROR STATE === */
-        .error-message {
-            color: #ff0066;
-            background: rgba(255, 0, 102, 0.1);
-            border: 1px solid #ff0066;
-            padding: 10px 15px;
-            border-radius: 5px;
-            margin-top: 15px;
-            font-size: 12px;
-            display: none;
-        }
-
-        .error-message.show {
-            display: block;
-            animation: shake 0.5s ease;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            75% { transform: translateX(10px); }
-        }
     </style>
 </head>
 <body>
 
-    <!-- Scanner View -->
-    <div class="scanner-view" id="scannerView">
+    <!-- Scanner -->
+    <div id="scanner-container">
         <div class="scanner-header">
             <h1 class="scanner-title">COSECURITY AR</h1>
             <p class="scanner-subtitle">Escaneie o QR Code para ativar a experiência AR</p>
         </div>
         <div id="reader"></div>
-        <div class="scanner-status" id="scannerStatus">SYSTEM READY</div>
-        <div class="error-message" id="errorMessage"></div>
+        <div id="status">SYSTEM READY</div>
+        <div id="error-msg"></div>
     </div>
 
-    <!-- AR View -->
-    <div class="ar-view" id="arView"></div>
+    <!-- AR -->
+    <div id="ar-container"></div>
 
-    <!-- Cyberpunk Overlay -->
-    <div class="cyber-overlay" id="cyberOverlay">
+    <!-- Overlay -->
+    <div class="cyber-overlay" id="overlay">
         <div class="cyber-scanline"></div>
     </div>
 
-    <!-- AR Controls -->
-    <div class="ar-controls" id="arControls">
-        <div class="feedback-message" id="feedbackMessage">Processing...</div>
-        <button class="capture-button" id="captureButton" aria-label="Capturar Foto"></button>
+    <!-- Controles -->
+    <div id="ar-ui">
+        <div id="feedback">Processing...</div>
+        <button id="btn-foto" aria-label="Capturar Foto"></button>
     </div>
 
     <!-- Loading -->
-    <div class="loading-overlay" id="loadingOverlay">
+    <div id="loading">
         <div>LOADING 3D ASSETS...</div>
-        <div class="loading-spinner"></div>
+        <div class="spinner"></div>
     </div>
 
     <script>
-        // ==================== CONFIGURAÇÃO ====================
-        const CONFIG = {
+        // ========== CONFIG ==========
+        const CFG = {
             modelo: "https://dev-cosecurity.github.io/teste-ar/19d5a7c9-a820-49de-ad16-30d8c10f0dde.glb",
             logo: "https://raw.githubusercontent.com/dev-cosecurity/teste-ar/417967783d6a06d5cb1c81339788af3e76360261/logo3.png",
-            coroa: {
-                escala: "1 1 1",
-                posicao: "0 -1.5 0",
-                rotacao: "0 0 0"
-            },
-            qrScanner: {
-                fps: 10,
-                qrbox: { width: 250, height: 250 }
-            }
+            coroa: { escala: "1 1 1", posicao: "0 -1.5 0", rotacao: "0 0 0" }
         };
 
-        // ==================== ESTADO DA APLICAÇÃO ====================
-        const AppState = {
-            scanner: null,
-            isScanning: true,
-            isARActive: false,
-            sceneLoaded: false
+        // ========== ELEMENTOS ==========
+        const el = {
+            scanner: document.getElementById('scanner-container'),
+            ar: document.getElementById('ar-container'),
+            overlay: document.getElementById('overlay'),
+            ui: document.getElementById('ar-ui'),
+            loading: document.getElementById('loading'),
+            status: document.getElementById('status'),
+            error: document.getElementById('error-msg'),
+            feedback: document.getElementById('feedback'),
+            btnFoto: document.getElementById('btn-foto')
         };
 
-        // ==================== ELEMENTOS DOM ====================
-        const Elements = {
-            scannerView: document.getElementById('scannerView'),
-            arView: document.getElementById('arView'),
-            cyberOverlay: document.getElementById('cyberOverlay'),
-            arControls: document.getElementById('arControls'),
-            loadingOverlay: document.getElementById('loadingOverlay'),
-            scannerStatus: document.getElementById('scannerStatus'),
-            errorMessage: document.getElementById('errorMessage'),
-            feedbackMessage: document.getElementById('feedbackMessage'),
-            captureButton: document.getElementById('captureButton')
-        };
+        // ========== ESTADO ==========
+        let scanner = null;
+        let scanning = true;
+        let arReady = false;
 
-        // ==================== UTILIDADES ====================
-        const Utils = {
-            showElement(element, addClass = 'active') {
-                if (element.classList) {
-                    element.classList.add(addClass);
-                } else {
-                    element.style.display = 'block';
-                }
-            },
+        // ========== FUNÇÕES ==========
+        function mostrarErro(msg) {
+            el.error.textContent = msg;
+            el.error.style.display = 'block';
+            console.error(msg);
+        }
 
-            hideElement(element, removeClass = 'active') {
-                if (element.classList) {
-                    element.classList.remove(removeClass);
-                } else {
-                    element.style.display = 'none';
-                }
-            },
+        function atualizarStatus(msg) {
+            el.status.textContent = msg;
+        }
 
-            showFeedback(message, duration = 2000) {
-                Elements.feedbackMessage.textContent = message;
-                Elements.feedbackMessage.classList.add('show');
-                setTimeout(() => {
-                    Elements.feedbackMessage.classList.remove('show');
-                }, duration);
-            },
+        function mostrarFeedback(msg, duracao = 2000) {
+            el.feedback.textContent = msg;
+            el.feedback.classList.add('show');
+            setTimeout(() => el.feedback.classList.remove('show'), duracao);
+        }
 
-            showError(message) {
-                Elements.errorMessage.textContent = message;
-                Elements.errorMessage.classList.add('show');
-                setTimeout(() => {
-                    Elements.errorMessage.classList.remove('show');
-                }, 5000);
-            },
+        // ========== SCANNER ==========
+        function iniciarScanner() {
+            scanner = new Html5Qrcode("reader");
+            
+            scanner.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (texto) => {
+                    if (!scanning) return;
+                    console.log("✓ QR detectado:", texto);
+                    scanning = false;
+                    atualizarStatus("QR DETECTED. LOADING AR...");
+                    el.loading.classList.add('active');
+                    setTimeout(pararScanner, 500);
+                },
+                () => {} // Ignorar erros de scan
+            ).catch(err => {
+                mostrarErro("Erro ao acessar câmera: " + err);
+            });
+        }
 
-            updateStatus(message) {
-                Elements.scannerStatus.textContent = message;
-            }
-        };
-
-        // ==================== QR SCANNER ====================
-        const QRScanner = {
-            init() {
-                try {
-                    AppState.scanner = new Html5Qrcode("reader");
-                    this.start();
-                } catch (error) {
-                    console.error("Erro ao inicializar scanner:", error);
-                    Utils.showError("Erro ao acessar câmera. Verifique as permissões.");
-                }
-            },
-
-            start() {
-                AppState.scanner.start(
-                    { facingMode: "environment" },
-                    CONFIG.qrScanner,
-                    this.onScanSuccess.bind(this),
-                    this.onScanError.bind(this)
-                ).catch(error => {
-                    console.error("Erro ao iniciar scanner:", error);
-                    Utils.showError("Não foi possível iniciar a câmera.");
+        function pararScanner() {
+            scanner.stop()
+                .then(() => {
+                    el.scanner.classList.add('hidden');
+                    iniciarAR();
+                })
+                .catch(err => {
+                    mostrarErro("Erro ao parar scanner: " + err);
                 });
-            },
+        }
 
-            onScanSuccess(decodedText) {
-                if (!AppState.isScanning) return;
+        // ========== AR ==========
+        function iniciarAR() {
+            el.overlay.classList.add('active');
+            
+            el.ar.innerHTML = `
+                <a-scene 
+                    mindar-face 
+                    embedded 
+                    color-space="sRGB" 
+                    renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true" 
+                    vr-mode-ui="enabled: false" 
+                    device-orientation-permission-ui="enabled: false"
+                    loading-screen="enabled: false">
+                    
+                    <a-assets>
+                        <a-asset-item id="coroa-modelo" src="${CFG.modelo}"></a-asset-item>
+                        <img id="logo-img" src="${CFG.logo}" crossorigin="anonymous">
+                    </a-assets>
 
-                console.log("QR Code detectado:", decodedText);
-                AppState.isScanning = false;
-                Utils.updateStatus("QR DETECTED. LOADING AR...");
-                Utils.showElement(Elements.loadingOverlay, 'active');
-
-                setTimeout(() => {
-                    this.stop();
-                }, 300);
-            },
-
-            onScanError(error) {
-                // Silencioso - erros de scan são normais
-            },
-
-            stop() {
-                AppState.scanner.stop()
-                    .then(() => {
-                        Utils.hideElement(Elements.scannerView, 'hidden');
-                        AREngine.init();
-                    })
-                    .catch(error => {
-                        console.error("Erro ao parar scanner:", error);
-                        Utils.showError("Erro ao iniciar AR.");
-                    });
-            }
-        };
-
-        // ==================== AR ENGINE ====================
-        const AREngine = {
-            init() {
-                this.createScene();
-                this.waitForSceneLoad();
-            },
-
-            createScene() {
-                Utils.showElement(Elements.cyberOverlay, 'active');
-
-                Elements.arView.innerHTML = `
-                    <a-scene 
-                        mindar-face 
-                        embedded 
-                        color-space="sRGB" 
-                        renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true" 
-                        vr-mode-ui="enabled: false" 
-                        device-orientation-permission-ui="enabled: false"
-                        loading-screen="enabled: false">
+                    <a-camera active="false" position="0 0 0"></a-camera>
+                    
+                    <a-entity mindar-face-target="anchorIndex: 10">
                         
-                        <a-assets>
-                            <a-asset-item id="modelo-coroa" src="${CONFIG.modelo}"></a-asset-item>
-                            <img id="logo-tex" src="${CONFIG.logo}" crossorigin="anonymous">
-                        </a-assets>
+                        <a-entity scale="0.1 0.1 0.1" 
+                            animation="property: scale; from: 0 0 0; to: 0.1 0.1 0.1; dur: 1200; easing: easeOutElastic">
 
-                        <a-camera active="false" position="0 0 0"></a-camera>
-                        
-                        <a-entity mindar-face-target="anchorIndex: 10">
-                            
-                            <!-- Container principal com animação de entrada -->
+                            <!-- Coroa -->
+                            <a-gltf-model 
+                                src="#coroa-modelo" 
+                                position="${CFG.coroa.posicao}" 
+                                scale="${CFG.coroa.escala}" 
+                                rotation="${CFG.coroa.rotacao}"
+                                material="color: #0066ff; metalness: 0.8; roughness: 0.2"
+                                animation__rotate="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear"
+                                animation__float="property: position; from: ${CFG.coroa.posicao}; to: 0 -1.3 0; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
+                            </a-gltf-model>
+
+                            <!-- Logo -->
                             <a-entity 
-                                id="crown-container"
-                                scale="0.1 0.1 0.1" 
-                                animation="property: scale; from: 0 0 0; to: 0.1 0.1 0.1; dur: 1200; easing: easeOutElastic; delay: 200">
-
-                                <!-- Modelo da Coroa -->
-                                <a-gltf-model 
-                                    src="#modelo-coroa" 
-                                    position="${CONFIG.coroa.posicao}" 
-                                    scale="${CONFIG.coroa.escala}" 
-                                    rotation="${CONFIG.coroa.rotacao}"
-                                    material="color: #0066ff; metalness: 0.8; roughness: 0.2"
-                                    animation__rotate="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear"
-                                    animation__float="property: position; from: ${CONFIG.coroa.posicao}; to: 0 -1.3 0; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
-                                </a-gltf-model>
-
-                                <!-- Logo com efeitos -->
-                                <a-entity 
-                                    position="0 1.2 0" 
-                                    animation__rotate="property: rotation; to: 0 -360 0; loop: true; dur: 8000; easing: linear"
-                                    animation__float="property: position; from: 0 1.2 0; to: 0 1.4 0; dir: alternate; loop: true; dur: 3000; easing: easeInOutSine">
-                                    
-                                    <!-- Logo principal -->
-                                    <a-image 
-                                        src="#logo-tex" 
-                                        width="1.5" 
-                                        height="1.5"
-                                        material="transparent: true; opacity: 0.95; blending: additive; side: double; depthTest: false"
-                                        animation__pulse="property: scale; from: 1 1 1; to: 1.1 1.1 1.1; dir: alternate; loop: true; dur: 1500; easing: easeInOutSine">
-                                    </a-image>
-                                    
-                                    <!-- Logo glow -->
-                                    <a-image 
-                                        src="#logo-tex" 
-                                        width="2" 
-                                        height="2"
-                                        material="transparent: true; opacity: 0.3; blending: additive; side: double; depthTest: false"
-                                        position="0 0 -0.1"
-                                        animation__glow="property: components.material.material.opacity; from: 0.2; to: 0.5; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
-                                    </a-image>
-                                </a-entity>
-
-                                <!-- Partículas decorativas -->
-                                ${this.createParticles()}
-
-                                <!-- Iluminação -->
-                                <a-light type="ambient" color="#ffffff" intensity="1.2"></a-light>
-                                <a-light type="point" color="#0066ff" intensity="3" distance="5" position="0 2 2"></a-light>
-                                <a-light type="point" color="#00ccff" intensity="2.5" distance="5" position="0 -2 2"></a-light>
-                                <a-light type="point" color="#0099ff" intensity="2" distance="4" position="2 0 1"></a-light>
-
+                                position="0 1.2 0" 
+                                animation__rotate="property: rotation; to: 0 -360 0; loop: true; dur: 8000; easing: linear"
+                                animation__float="property: position; from: 0 1.2 0; to: 0 1.4 0; dir: alternate; loop: true; dur: 3000; easing: easeInOutSine">
+                                
+                                <a-image 
+                                    src="#logo-img" 
+                                    width="1.5" 
+                                    height="1.5"
+                                    material="transparent: true; opacity: 0.95; side: double"
+                                    animation__pulse="property: scale; from: 1 1 1; to: 1.1 1.1 1.1; dir: alternate; loop: true; dur: 1500; easing: easeInOutSine">
+                                </a-image>
+                                
+                                <a-image 
+                                    src="#logo-img" 
+                                    width="2" 
+                                    height="2"
+                                    material="transparent: true; opacity: 0.3; side: double"
+                                    position="0 0 -0.1"
+                                    animation__glow="property: components.material.material.opacity; from: 0.2; to: 0.5; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
+                                </a-image>
                             </a-entity>
+
+                            <!-- Partículas -->
+                            <a-sphere radius="0.05" color="#00ffff" position="0.8 0.5 0" material="emissive: #00ffff; opacity: 0.7"
+                                animation__orbit="property: position; to: 0.8 1.5 0; dir: alternate; loop: true; dur: 3000; easing: easeInOutSine"></a-sphere>
+                            <a-sphere radius="0.05" color="#00ffff" position="-0.8 0.5 0" material="emissive: #00ffff; opacity: 0.7"
+                                animation__orbit="property: position; to: -0.8 1.5 0; dir: alternate; loop: true; dur: 3000; delay: 200; easing: easeInOutSine"></a-sphere>
+                            <a-sphere radius="0.05" color="#00ffff" position="0 0.5 0.8" material="emissive: #00ffff; opacity: 0.7"
+                                animation__orbit="property: position; to: 0 1.5 0.8; dir: alternate; loop: true; dur: 3000; delay: 400; easing: easeInOutSine"></a-sphere>
+                            <a-sphere radius="0.05" color="#00ffff" position="0 0.5 -0.8" material="emissive: #00ffff; opacity: 0.7"
+                                animation__orbit="property: position; to: 0 1.5 -0.8; dir: alternate; loop: true; dur: 3000; delay: 600; easing: easeInOutSine"></a-sphere>
+
+                            <!-- Luzes -->
+                            <a-light type="ambient" color="#ffffff" intensity="1.2"></a-light>
+                            <a-light type="point" color="#0066ff" intensity="3" distance="5" position="0 2 2"></a-light>
+                            <a-light type="point" color="#00ccff" intensity="2.5" distance="5" position="0 -2 2"></a-light>
+                            <a-light type="point" color="#0099ff" intensity="2" distance="4" position="2 0 1"></a-light>
+
                         </a-entity>
-                    </a-scene>
-                `;
+                    </a-entity>
+                </a-scene>
+            `;
 
-                Utils.showElement(Elements.arView, 'active');
-            },
+            el.ar.classList.add('active');
+            esperarCena();
+        }
 
-            createParticles() {
-                let particles = '';
-                for (let i = 0; i < 8; i++) {
-                    const angle = (i / 8) * Math.PI * 2;
-                    const x = Math.cos(angle) * 0.8;
-                    const z = Math.sin(angle) * 0.8;
-                    const delay = i * 150;
-                    
-                    particles += `
-                        <a-sphere 
-                            radius="0.05" 
-                            color="#00ffff"
-                            position="${x} 0.5 ${z}"
-                            material="emissive: #00ffff; emissiveIntensity: 1; opacity: 0.7"
-                            animation__orbit="property: position; to: ${x} 1.5 ${z}; dir: alternate; loop: true; dur: 3000; delay: ${delay}; easing: easeInOutSine"
-                            animation__fade="property: components.material.material.opacity; from: 0.3; to: 0.9; dir: alternate; loop: true; dur: 2000; delay: ${delay}; easing: easeInOutSine">
-                        </a-sphere>
-                    `;
+        function esperarCena() {
+            let tentativas = 0;
+            const intervalo = setInterval(() => {
+                const cena = document.querySelector('a-scene');
+                tentativas++;
+                
+                if (cena && cena.hasLoaded) {
+                    clearInterval(intervalo);
+                    cenaCarregada();
+                } else if (tentativas > 100) {
+                    clearInterval(intervalo);
+                    console.warn("Timeout ao carregar cena");
+                    cenaCarregada(); // Tentar mesmo assim
                 }
-                return particles;
-            },
+            }, 100);
+        }
 
-            waitForSceneLoad() {
-                const checkInterval = setInterval(() => {
-                    const scene = document.querySelector('a-scene');
-                    if (scene && scene.hasLoaded) {
-                        clearInterval(checkInterval);
-                        this.onSceneReady();
-                    }
-                }, 100);
+        function cenaCarregada() {
+            console.log("✓ Cena AR carregada");
+            arReady = true;
+            el.loading.classList.remove('active');
+            el.ui.classList.add('active');
+            mostrarFeedback("AR ATIVADO", 2000);
+        }
 
-                // Timeout de segurança
-                setTimeout(() => {
-                    clearInterval(checkInterval);
-                    if (!AppState.sceneLoaded) {
-                        console.warn("Scene load timeout");
-                        this.onSceneReady();
-                    }
-                }, 10000);
-            },
-
-            onSceneReady() {
-                console.log("✓ Cena AR carregada com sucesso");
-                AppState.sceneLoaded = true;
-                AppState.isARActive = true;
-
-                Utils.hideElement(Elements.loadingOverlay, 'active');
-                Utils.showElement(Elements.arControls, 'active');
-                Utils.showFeedback("AR ATIVADO", 2000);
+        // ========== FOTO ==========
+        function tirarFoto() {
+            if (!arReady) {
+                mostrarFeedback("Aguarde o AR carregar", 2000);
+                return;
             }
-        };
 
-        // ==================== CAPTURA DE FOTO ====================
-        const PhotoCapture = {
-            capture() {
-                if (!AppState.isARActive) {
-                    Utils.showFeedback("AR não está ativo", 2000);
-                    return;
+            try {
+                const cena = document.querySelector('a-scene');
+                const video = document.querySelector('video');
+                
+                if (!cena || !video) {
+                    throw new Error("Componentes não encontrados");
                 }
 
-                try {
-                    const scene = document.querySelector('a-scene');
-                    const video = document.querySelector('video');
-                    
-                    if (!scene || !video) {
-                        throw new Error("Componentes AR não encontrados");
-                    }
-
-                    const canvas3D = scene.components.screenshot.getCanvas('perspective');
-                    const finalCanvas = this.createCompositeImage(video, canvas3D);
-                    const dataURL = finalCanvas.toDataURL('image/png');
-
-                    this.downloadImage(dataURL, `cosecurity-ar-${Date.now()}.png`);
-                    this.showSuccessSequence();
-
-                } catch (error) {
-                    console.error("Erro ao capturar foto:", error);
-                    Utils.showFeedback("Erro ao capturar foto", 2000);
-                }
-            },
-
-            createCompositeImage(video, canvas3D) {
+                const canvas3D = cena.components.screenshot.getCanvas('perspective');
                 const canvas = document.createElement('canvas');
                 canvas.width = video.videoWidth || 1280;
                 canvas.height = video.videoHeight || 720;
@@ -646,60 +504,39 @@
                 ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
                 ctx.restore();
 
-                // Sobrepor renderização 3D
+                // Adicionar 3D
                 ctx.drawImage(canvas3D, 0, 0, canvas.width, canvas.height);
 
-                return canvas;
-            },
+                const img = canvas.toDataURL('image/png');
+                
+                // Download
+                const a = document.createElement('a');
+                a.href = img;
+                a.download = `cosecurity-ar-${Date.now()}.png`;
+                a.click();
 
-            downloadImage(dataURL, filename) {
-                const link = document.createElement('a');
-                link.href = dataURL;
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            },
-
-            showSuccessSequence() {
-                Utils.showFeedback("IMAGEM SALVA!", 1500);
-
+                mostrarFeedback("IMAGEM SALVA!", 1500);
+                
                 setTimeout(() => {
-                    Utils.showFeedback("COMPARTILHE NO INSTAGRAM!", 3000);
-                    
-                    // Tentar abrir Instagram (mobile)
-                    const instagramURL = "instagram://camera";
-                    window.location.href = instagramURL;
-                    
-                    // Fallback para web
+                    mostrarFeedback("COMPARTILHE NO INSTAGRAM!", 3000);
                     setTimeout(() => {
-                        window.open('https://www.instagram.com/', '_blank');
-                    }, 1000);
+                        window.location.href = "instagram://camera";
+                    }, 500);
                 }, 1500);
+
+            } catch (err) {
+                console.error("Erro ao capturar:", err);
+                mostrarFeedback("Erro ao capturar foto", 2000);
             }
-        };
+        }
 
-        // ==================== EVENT LISTENERS ====================
-        Elements.captureButton.addEventListener('click', () => {
-            PhotoCapture.capture();
-        });
+        // ========== EVENTOS ==========
+        el.btnFoto.addEventListener('click', tirarFoto);
 
-        // Prevenir zoom no mobile
-        document.addEventListener('touchmove', (e) => {
-            if (e.touches.length > 1) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-
-        // ==================== INICIALIZAÇÃO ====================
+        // ========== INIT ==========
         window.addEventListener('load', () => {
-            console.log("🚀 Cosecurity AR inicializado");
-            QRScanner.init();
-        });
-
-        // Tratamento de erros globais
-        window.addEventListener('error', (e) => {
-            console.error('Erro global:', e.error);
+            console.log("🚀 Iniciando Cosecurity AR");
+            iniciarScanner();
         });
 
     </script>
