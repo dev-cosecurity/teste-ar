@@ -3,156 +3,231 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Cosecurity Street Stocagem</title>
+    <title>Cosecurity Cyberpunk AR</title>
     
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-face-aframe.prod.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <style>
-        /* === ESTILOS BÁSICOS === */
-        body { margin: 0; overflow: hidden; font-family: sans-serif; background: #000; }
+        /* === ESTILOS GERAIS (Mantidos iguais para consistência) === */
+        body { margin: 0; overflow: hidden; font-family: 'Courier New', Courier, monospace; background: #000; color: white; }
         
-        /* === TELA 1: SCANNER === */
-        #scanner-overlay {
+        #scanner-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 50;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; color: #00ffff;
+            background: #0d0d0d; z-index: 50;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-        #reader { width: 300px; height: 300px; border: 2px solid #00ffff; }
-        
-        /* === TELA 2: AR FULLSCREEN === */
-        /* O A-Frame cuida do vídeo em tela cheia automaticamente */
+        .titulo { color: #00ffff; font-size: 24px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px #00ffff; }
+        .aviso { color: #aaa; text-align: center; margin-bottom: 20px; padding: 0 20px; font-size: 14px; }
+        #reader { width: 100%; max-width: 400px; border: 2px solid #00ffff; box-shadow: 0 0 15px #00ffff; border-radius: 5px; overflow: hidden; }
+
+        #ar-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: black; }
+
+        /* Overlay Cyberpunk */
+        .cyber-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; 
+            background: linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px; box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.8); 
+        }
+        .cyber-scanline {
+            position: absolute; width: 100%; height: 4px; background: rgba(0, 255, 255, 0.8);
+            box-shadow: 0 0 15px #00ffff; animation: scan 3s linear infinite; opacity: 0.7;
+        }
+        @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
+
+        /* UI Botões */
         #ar-ui {
-            position: absolute; top: 20px; left: 0; width: 100%;
-            text-align: center; pointer-events: none; z-index: 20;
+            position: absolute; bottom: 40px; left: 0; width: 100%; z-index: 100;
+            display: none; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; 
         }
-        .instrucao {
-            color: #fff; background: rgba(0,0,0,0.5); padding: 10px 20px;
-            border-radius: 20px; font-size: 14px; text-transform: uppercase;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+        #btn-foto {
+            pointer-events: auto; width: 80px; height: 80px; background: rgba(0,0,0,0.5);
+            border: 2px solid #00ffff; border-radius: 50%; cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); position: relative; transition: 0.2s;
+        }
+        #btn-foto::after {
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 60px; height: 60px; background: white; border-radius: 50%; border: 2px solid #000;
+        }
+        #btn-foto:active { transform: scale(0.9); box-shadow: 0 0 40px #00ffff; }
+        #msg-feedback {
+            background: rgba(0, 255, 255, 0.2); border: 1px solid #00ffff; color: #00ffff; padding: 10px 20px;
+            border-radius: 5px; margin-bottom: 20px; font-size: 14px; opacity: 0; transition: opacity 0.5s;
+            text-align: center; text-transform: uppercase; text-shadow: 0 0 5px black;
+        }
+        #ar-loading {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8); border: 1px solid #00ffff; color: #00ffff; padding: 20px;
+            border-radius: 5px; font-size: 16px; z-index: 30; display: none; text-align: center;
         }
     </style>
-
-    <script>
-        // === COMPONENTE SPAWNER (A MÁGICA DO CLIQUE) ===
-        AFRAME.registerComponent('click-spawner', {
-            init: function () {
-                // Escuta cliques em qualquer lugar da cena
-                this.el.sceneEl.addEventListener('click', (evt) => {
-                    // 'evt.detail.intersection' contém os dados de onde o raio do clique bateu no mundo 3D
-                    if (evt.detail.intersection) {
-                        const point = evt.detail.intersection.point;
-                        spawnPoste(point);
-                    }
-                });
-            }
-        });
-
-        // Função que cria o elemento do poste
-        function spawnPoste(positionPoint) {
-            const scene = document.querySelector('a-scene');
-            
-            // 1. Cria o elemento de imagem
-            const poste = document.createElement('a-image');
-            
-            // 2. Configurações do Poste (IMPORTANTE AJUSTAR AQUI)
-            poste.setAttribute('src', '#img-poste');
-            poste.setAttribute('width', '1');   // Largura real em metros (ex: 1 metro)
-            poste.setAttribute('height', '3');  // Altura real em metros (ex: 3 metros)
-            
-            // 3. Define a posição onde foi clicado
-            // Ajustamos o Y (altura) para metade da altura do objeto, para ele ficar apoiado no ponto clicado e não enterrado no meio
-            poste.setAttribute('position', `${positionPoint.x} ${positionPoint.y + 1.5} ${positionPoint.z}`);
-            
-            // 4. CRUCIAL: Faz o PNG sempre girar para encarar o usuário
-            poste.setAttribute('look-at', '[camera]');
-
-            // 5. Animação de "Pop" ao aparecer
-            poste.setAttribute('scale', '0 0 0');
-            poste.setAttribute('animation', 'property: scale; to: 1 1 1; dur: 600; easing: easeOutBack');
-
-            // Adiciona à cena
-            scene.appendChild(poste);
-        }
-    </script>
 </head>
 <body>
 
-    <div id="scanner-overlay">
-        <h2>SCAN QR CODE</h2>
+    <div id="ar-ui">
+        <div id="msg-feedback">Processing...</div>
+        <button id="btn-foto" onclick="tirarFoto()" aria-label="Tirar Foto"></button>
+    </div>
+
+    <div id="ar-loading">LOADING 3D ASSETS...</div>
+
+    <div id="scanner-container">
+        <h1 class="titulo">COSECURITY AR</h1>
+        <p class="aviso">Teste 1</p>
         <div id="reader"></div>
+        <p id="status" style="color: #00ffff; margin-top:15px; font-size: 12px; font-family: monospace;">SYSTEM READY</p>
     </div>
 
-    <div id="ar-ui" style="display: none;">
-        <span class="instrucao">Toque na tela para posicionar um poste</span>
-    </div>
-
-    <a-scene embedded vr-mode-ui="enabled: false" 
-             cursor="rayOrigin: mouse" 
-             raycaster="objects: .clicavel"
-             click-spawner>
-
-        <a-assets>
-            <img id="img-poste" src="./poste-virtual.png">
-        </a-assets>
-
-        <a-camera position="0 1.6 0" look-controls="enabled: true"></a-camera>
-
-        <a-sphere class="clicavel" radius="10" position="0 1.6 0" 
-                  material="opacity: 0; side: back; shader: flat">
-        </a-sphere>
-
-        <a-light type="ambient" intensity="1"></a-light>
-
-    </a-scene>
+    <div id="ar-container"></div>
 
     <script>
-        // === LÓGICA DO SCANNER ===
-        const scannerOverlay = document.getElementById('scanner-overlay');
+        // --- CONFIGURAÇÃO DE ARQUIVOS (MUDE AQUI) ---
+        // Coloque o link do seu arquivo .glb aqui
+        const URL_MODELO_GLB = "https://dev-cosecurity.github.io/teste-ar/19d5a7c9-a820-49de-ad16-30d8c10f0dde.glb"; 
+        
+        // Coloque o link do seu logo.png aqui
+        const URL_LOGO = "https://github.com/dev-cosecurity/teste-ar/blob/417967783d6a06d5cb1c81339788af3e76360261/logo3.png"; 
+
+        // --- Ajustes Finos (Se a coroa ficar torta ou pequena, mexa aqui) ---
+        const ESCALA_COROA = "1 1 1";  // Tente aumentar para "2 2 2" se ficar pequena
+        const POSICAO_COROA = "0 -1.5 0"; // Sobe ou desce a coroa na cabeça
+        const ROTACAO_COROA = "0 0 0"; // Gira a coroa se estiver de lado
+
+        const scannerContainer = document.getElementById('scanner-container');
+        const arContainer = document.getElementById('ar-container');
+        const arLoading = document.getElementById('ar-loading');
         const arUI = document.getElementById('ar-ui');
+        const statusMsg = document.getElementById('status');
         let html5QrCode;
         let scannerAtivo = true;
 
+        // 1. SCANNER
         function iniciarScanner() {
             html5QrCode = new Html5Qrcode("reader");
-            // facingMode: "environment" força a câmera traseira
-            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, 
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, 
                 (decodedText) => {
                     if (scannerAtivo) {
-                        console.log("QR Lido:", decodedText);
-                        // (Opcional) Valide o texto do QR Code aqui se quiser
-                        
+                        console.log("QR:", decodedText);
                         scannerAtivo = false;
-                        qrCodeLidoComSucesso();
+                        statusMsg.innerText = "MODEL DETECTED. DOWNLOADING...";
+                        arLoading.style.display = 'block'; 
+                        setTimeout(ativarModoAR, 500);
                     }
                 },
-                () => {} // Ignora erros de leitura por frame
-            ).catch(err => {
-                alert("Erro ao iniciar câmera: " + err);
-            });
+                () => {}
+            ).catch(err => { statusMsg.innerText = "Erro Cam: " + err; });
         }
 
-        function qrCodeLidoComSucesso() {
+        function ativarModoAR() {
             html5QrCode.stop().then(() => {
-                // Esconde o scanner
-                scannerOverlay.style.display = 'none';
-                // Mostra a UI de instrução do AR
-                arUI.style.display = 'block';
-                
-                // O A-Frame assume a câmera traseira automaticamente e fica em fullscreen.
+                scannerContainer.style.display = 'none'; 
+                renderizarCenaAR();
             }).catch(err => console.error(err));
         }
 
-        // Script de placeholder caso você não tenha o arquivo 'poste-virtual.png' na pasta ainda.
-        // REMOVA ISSO QUANDO COLOCAR SEU ARQUIVO REAL.
-        const img = document.getElementById('logo3.png');
-        img.onerror = () => {
-            img.src = "https://via.placeholder.com/300x800/0000ff/ffffff?text=POSTE+PNG";
-        };
+        // 2. RENDERIZAÇÃO DO MODELO GLB + LOGO
+        function renderizarCenaAR() {
+            // Overlay CSS
+            const overlay = document.createElement('div');
+            overlay.className = 'cyber-overlay';
+            overlay.innerHTML = '<div class="cyber-scanline"></div>';
+            document.body.appendChild(overlay);
 
-        // Inicia o fluxo
+            arContainer.innerHTML = `
+                <a-scene mindar-face embedded color-space="sRGB" 
+                    renderer="colorManagement: true, physicallyCorrectLights" 
+                    vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+                    
+                    <a-assets>
+                        <a-asset-item id="modelo-coroa" src="${URL_MODELO_GLB}"></a-asset-item>
+                        <img id="logo-tex" src="${URL_LOGO}">
+                    </a-assets>
+
+                    <a-camera active="false" position="0 0 0"></a-camera>
+                    
+                    <a-entity mindar-face-target="anchorIndex: 10">
+                        
+                        <a-entity scale="0.1 0.1 0.1" 
+                            animation="property: scale; from: 0 0 0; to: 1 1 1; dur: 1500; easing: easeOutElastic">
+
+                            <a-gltf-model src="#modelo-coroa" 
+                                position="${POSICAO_COROA}" 
+                                scale="${ESCALA_COROA}" 
+                                rotation="${ROTACAO_COROA}"
+                                animation="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear">
+                            </a-gltf-model>
+
+                            <a-entity position="0 1.2 0" animation="property: rotation; to: 0 -360 0; loop: true; dur: 7000; easing: linear">
+                                <a-image src="#logo-tex" width="1.5" height="1.5"
+                                    material="transparent: true; opacity: 0.9; blending: additive; side: double; depthTest: false">
+                                </a-image>
+                                <a-image src="#logo-tex" width="1.8" height="1.8"
+                                    material="transparent: true; opacity: 0.3; blending: additive; side: double; depthTest: false"
+                                    position="0 0 -0.1">
+                                </a-image>
+                            </a-entity>
+
+                            <a-light type="ambient" color="#ffffff" intensity="1"></a-light>
+                            <a-light type="point" color="#00ffff" intensity="2" distance="5" position="0 2 2"></a-light>
+                            <a-light type="point" color="#ff00ff" intensity="2" distance="5" position="0 -2 2"></a-light>
+
+                        </a-entity>
+                    </a-entity>
+                </a-scene>
+            `;
+
+            // Checagem de segurança se a cena carregou
+            const checkScene = setInterval(() => {
+                const scene = document.querySelector('a-scene');
+                if (scene && scene.hasLoaded) {
+                    clearInterval(checkScene);
+                    console.log("Cena carregada com GLB externo.");
+                    arLoading.style.display = 'none';
+                    arUI.style.display = 'flex';
+                }
+            }, 500);
+        }
+
+        // 3. FOTO
+        function tirarFoto() {
+            const scene = document.querySelector('a-scene');
+            const video = document.querySelector('video');
+            const canvas3D = scene.components.screenshot.getCanvas('perspective');
+
+            const canvasFinal = document.createElement('canvas');
+            canvasFinal.width = video.videoWidth;
+            canvasFinal.height = video.videoHeight;
+            const ctx = canvasFinal.getContext('2d');
+
+            ctx.save();
+            ctx.scale(-1, 1); // Espelha
+            ctx.drawImage(video, -canvasFinal.width, 0, canvasFinal.width, canvasFinal.height);
+            ctx.restore();
+            ctx.drawImage(canvas3D, 0, 0, canvasFinal.width, canvasFinal.height);
+
+            const dataURL = canvasFinal.toDataURL('image/png');
+            downloadImage(dataURL, 'cosecurity-ar.png');
+
+            const feedback = document.getElementById('msg-feedback');
+            feedback.innerText = "IMAGE SAVED!";
+            feedback.style.opacity = 1;
+            
+            setTimeout(() => {
+                window.location.href = "instagram://camera";
+                setTimeout(() => feedback.innerText = "POST ON INSTAGRAM", 1500);
+            }, 1000);
+        }
+
+        function downloadImage(data, filename) {
+            const a = document.createElement('a');
+            a.href = data; a.download = filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+
         iniciarScanner();
     </script>
 </body>
 </html>
+
+
