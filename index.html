@@ -2,543 +2,168 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Cosecurity Cyberpunk AR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosecurity MediaPipe Core</title>
     
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-face-aframe.prod.js"></script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* Mantendo sua estética Cyberpunk */
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', Courier, monospace; }
         
-        body { 
-            font-family: 'Courier New', Courier, monospace; 
-            background: #000; 
-            color: white; 
-            overflow: hidden;
-            height: 100vh;
-            width: 100vw;
-        }
+        #main-container { position: relative; width: 100vw; height: 100vh; }
         
-        /* === SCANNER === */
-        #scanner-container {
-            position: fixed;
-            inset: 0;
-            background: #0d0d0d;
-            z-index: 50;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+        /* O vídeo fica escondido ou visível por baixo, mas o canvas é quem manda */
+        #input-video { position: absolute; transform: scaleX(-1); width: 100%; height: 100%; object-fit: cover; opacity: 0; } 
+        #output-canvas { position: absolute; width: 100%; height: 100%; object-fit: cover; }
+
+        .ui-layer {
+            position: absolute; top: 20px; left: 20px; color: #00ffff;
+            text-shadow: 0 0 10px #00ffff; z-index: 10; pointer-events: none;
         }
 
-        #scanner-container.hidden {
-            display: none;
-        }
-        
-        .scanner-header {
-            text-align: center;
-            margin-bottom: 30px;
-            animation: glow 2s ease-in-out infinite alternate;
+        #debug-info {
+            background: rgba(0,0,0,0.7); padding: 10px; border: 1px solid #00ffff;
         }
 
-        @keyframes glow {
-            from { text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff; }
-            to { text-shadow: 0 0 20px #00ffff, 0 0 30px #00ffff, 0 0 40px #00ffff; }
-        }
-        
-        .scanner-title {
-            color: #00ffff;
-            font-size: 28px;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-        }
-        
-        .scanner-subtitle {
-            color: #aaa;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-        
-        #reader {
-            width: 100%;
-            max-width: 400px;
-            border: 2px solid #00ffff;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
-            border-radius: 8px;
-            overflow: hidden;
-            background: #000;
+        .scanline {
+            position: absolute; width: 100%; height: 5px; background: rgba(0, 255, 255, 0.3);
+            animation: scan 3s linear infinite; pointer-events: none; z-index: 5;
         }
 
-        #status {
-            color: #00ffff;
-            margin-top: 20px;
-            font-size: 12px;
-            text-align: center;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        #error-msg {
-            color: #ff0066;
-            background: rgba(255, 0, 102, 0.1);
-            border: 1px solid #ff0066;
-            padding: 10px 15px;
-            border-radius: 5px;
-            margin-top: 15px;
-            font-size: 12px;
-            display: none;
-            max-width: 400px;
-        }
-
-        /* === AR === */
-        #ar-container {
-            position: fixed;
-            inset: 0;
-            z-index: 10;
-            background: black;
-            display: none;
-        }
-
-        #ar-container.active {
-            display: block;
-        }
-
-        /* === OVERLAY === */
-        .cyber-overlay {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: 20;
-            background: 
-                linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 30px 30px;
-            box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.9);
-            display: none;
-        }
-
-        .cyber-overlay.active {
-            display: block;
-        }
-        
-        .cyber-scanline {
-            position: absolute;
-            width: 100%;
-            height: 3px;
-            background: linear-gradient(transparent, rgba(0, 255, 255, 0.8), transparent);
-            box-shadow: 0 0 20px #00ffff;
-            animation: scan 4s linear infinite;
-        }
-        
-        @keyframes scan {
-            0% { top: 0%; }
-            100% { top: 100%; }
-        }
-
-        /* === CONTROLES === */
-        #ar-ui {
-            position: fixed;
-            bottom: 40px;
-            left: 0;
-            right: 0;
-            z-index: 100;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            pointer-events: none;
-        }
-
-        #ar-ui.active {
-            display: flex;
-            animation: slideUp 0.6s ease-out;
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(50px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        #feedback {
-            background: rgba(0, 255, 255, 0.2);
-            border: 1px solid #00ffff;
-            color: #00ffff;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 14px;
-            text-align: center;
-            text-transform: uppercase;
-            opacity: 0;
-            transition: opacity 0.4s;
-            backdrop-filter: blur(10px);
-        }
-
-        #feedback.show {
-            opacity: 1;
-        }
-        
-        #btn-foto {
-            pointer-events: auto;
-            width: 80px;
-            height: 80px;
-            background: rgba(0, 0, 0, 0.6);
-            border: 3px solid #00ffff;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
-            position: relative;
-            transition: all 0.3s;
-        }
-
-        #btn-foto::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 60px;
-            height: 60px;
-            background: white;
-            border-radius: 50%;
-            border: 3px solid #000;
-            transition: all 0.2s;
-        }
-
-        #btn-foto:active {
-            transform: scale(0.95);
-        }
-
-        #btn-foto:active::before {
-            width: 50px;
-            height: 50px;
-        }
-
-        /* === LOADING === */
-        #loading {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            border: 2px solid #00ffff;
-            color: #00ffff;
-            padding: 30px 40px;
-            border-radius: 10px;
-            font-size: 16px;
-            z-index: 30;
-            display: none;
-            text-align: center;
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
-        }
-
-        #loading.active {
-            display: block;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(0, 255, 255, 0.3);
-            border-top-color: #00ffff;
-            border-radius: 50%;
-            margin: 15px auto 0;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
     </style>
 </head>
 <body>
 
-    <!-- Scanner -->
-    <div id="scanner-container">
-        <div class="scanner-header">
-            <h1 class="scanner-title">COSECURITY AR</h1>
-            <p class="scanner-subtitle">Escaneie o QR Code para ativar a experiência AR</p>
-        </div>
-        <div id="reader"></div>
-        <div id="status">SYSTEM READY</div>
-        <div id="error-msg"></div>
+<div id="main-container">
+    <video id="input-video" playsinline></video>
+    <canvas id="output-canvas"></canvas>
+    <div class="scanline"></div>
+
+    <div class="ui-layer">
+        <h2>COSECURITY_KERNEL</h2>
+        <div id="debug-info">INIT SYSTEM...</div>
     </div>
+</div>
 
-    <!-- AR -->
-    <div id="ar-container"></div>
+<script>
+    const videoElement = document.getElementById('input-video');
+    const canvasElement = document.getElementById('output-canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const debugElement = document.getElementById('debug-info');
 
-    <!-- Overlay -->
-    <div class="cyber-overlay" id="overlay">
-        <div class="cyber-scanline"></div>
-    </div>
+    // Carregar a imagem da coroa (Substitua pela URL do seu asset 2D ou render do 3D)
+    const crownImage = new Image();
+    crownImage.src = "https://cdn-icons-png.flaticon.com/512/1165/1165239.png"; // Exemplo placeholder
 
-    <!-- Controles -->
-    <div id="ar-ui">
-        <div id="feedback">Processing...</div>
-        <button id="btn-foto" aria-label="Capturar Foto"></button>
-    </div>
+    // Ajuste de DPI para nitidez
+    function resizeCanvas() {
+        canvasElement.width = window.innerWidth;
+        canvasElement.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
 
-    <!-- Loading -->
-    <div id="loading">
-        <div>LOADING 3D ASSETS...</div>
-        <div class="spinner"></div>
-    </div>
+    function onResults(results) {
+        // Limpar canvas
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        
+        // Desenhar o vídeo da câmera no canvas (espelhado)
+        canvasCtx.translate(canvasElement.width, 0);
+        canvasCtx.scale(-1, 1);
+        canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-    <script>
-        // ========== CONFIG ==========
-        const CFG = {
-            modelo: "https://dev-cosecurity.github.io/teste-ar/19d5a7c9-a820-49de-ad16-30d8c10f0dde.glb",
-            logo: "https://raw.githubusercontent.com/dev-cosecurity/teste-ar/417967783d6a06d5cb1c81339788af3e76360261/logo3.png",
-            coroa: { escala: "1 1 1", posicao: "0 -1.5 0", rotacao: "0 0 0" }
-        };
-
-        // ========== ELEMENTOS ==========
-        const el = {
-            scanner: document.getElementById('scanner-container'),
-            ar: document.getElementById('ar-container'),
-            overlay: document.getElementById('overlay'),
-            ui: document.getElementById('ar-ui'),
-            loading: document.getElementById('loading'),
-            status: document.getElementById('status'),
-            error: document.getElementById('error-msg'),
-            feedback: document.getElementById('feedback'),
-            btnFoto: document.getElementById('btn-foto')
-        };
-
-        // ========== ESTADO ==========
-        let scanner = null;
-        let scanning = true;
-        let arReady = false;
-
-        // ========== FUNÇÕES ==========
-        function mostrarErro(msg) {
-            el.error.textContent = msg;
-            el.error.style.display = 'block';
-            console.error(msg);
-        }
-
-        function atualizarStatus(msg) {
-            el.status.textContent = msg;
-        }
-
-        function mostrarFeedback(msg, duracao = 2000) {
-            el.feedback.textContent = msg;
-            el.feedback.classList.add('show');
-            setTimeout(() => el.feedback.classList.remove('show'), duracao);
-        }
-
-        // ========== SCANNER ==========
-        function iniciarScanner() {
-            scanner = new Html5Qrcode("reader");
-            
-            scanner.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 250, height: 250 } },
-                (texto) => {
-                    if (!scanning) return;
-                    console.log("✓ QR detectado:", texto);
-                    scanning = false;
-                    atualizarStatus("QR DETECTED. LOADING AR...");
-                    el.loading.classList.add('active');
-                    setTimeout(pararScanner, 500);
-                },
-                () => {} // Ignorar erros de scan
-            ).catch(err => {
-                mostrarErro("Erro ao acessar câmera: " + err);
-            });
-        }
-
-        function pararScanner() {
-            scanner.stop()
-                .then(() => {
-                    el.scanner.classList.add('hidden');
-                    iniciarAR();
-                })
-                .catch(err => {
-                    mostrarErro("Erro ao parar scanner: " + err);
-                });
-        }
-
-        // ========== AR ==========
-        function iniciarAR() {
-            el.overlay.classList.add('active');
-            
-            el.ar.innerHTML = `
-                <a-scene 
-                    mindar-face 
-                    embedded 
-                    color-space="sRGB" 
-                    renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true" 
-                    vr-mode-ui="enabled: false" 
-                    device-orientation-permission-ui="enabled: false"
-                    loading-screen="enabled: false">
-                    
-                    <a-assets>
-                        <a-asset-item id="coroa-modelo" src="${CFG.modelo}"></a-asset-item>
-                        <img id="logo-img" src="${CFG.logo}" crossorigin="anonymous">
-                    </a-assets>
-
-                    <a-camera active="false" position="0 0 0"></a-camera>
-                    
-                    <a-entity mindar-face-target="anchorIndex: 10">
-                        
-                        <a-entity scale="0.1 0.1 0.1" 
-                            animation="property: scale; from: 0 0 0; to: 0.1 0.1 0.1; dur: 1200; easing: easeOutElastic">
-
-                            <!-- Coroa -->
-                            <a-gltf-model 
-                                src="#coroa-modelo" 
-                                position="${CFG.coroa.posicao}" 
-                                scale="${CFG.coroa.escala}" 
-                                rotation="${CFG.coroa.rotacao}"
-                                material="color: #0066ff; metalness: 0.8; roughness: 0.2"
-                                animation__rotate="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear"
-                                animation__float="property: position; from: ${CFG.coroa.posicao}; to: 0 -1.3 0; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
-                            </a-gltf-model>
-
-                            <!-- Logo -->
-                            <a-entity 
-                                position="0 1.2 0" 
-                                animation__rotate="property: rotation; to: 0 -360 0; loop: true; dur: 8000; easing: linear"
-                                animation__float="property: position; from: 0 1.2 0; to: 0 1.4 0; dir: alternate; loop: true; dur: 3000; easing: easeInOutSine">
-                                
-                                <a-image 
-                                    src="#logo-img" 
-                                    width="1.5" 
-                                    height="1.5"
-                                    material="transparent: true; opacity: 0.95; side: double"
-                                    animation__pulse="property: scale; from: 1 1 1; to: 1.1 1.1 1.1; dir: alternate; loop: true; dur: 1500; easing: easeInOutSine">
-                                </a-image>
-                                
-                                <a-image 
-                                    src="#logo-img" 
-                                    width="2" 
-                                    height="2"
-                                    material="transparent: true; opacity: 0.3; side: double"
-                                    position="0 0 -0.1"
-                                    animation__glow="property: components.material.material.opacity; from: 0.2; to: 0.5; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
-                                </a-image>
-                            </a-entity>
-
-                            <!-- Partículas -->
-                            <a-sphere radius="0.05" color="#00ffff" position="0.8 0.5 0" material="emissive: #00ffff; opacity: 0.7"
-                                animation__orbit="property: position; to: 0.8 1.5 0; dir: alternate; loop: true; dur: 3000; easing: easeInOutSine"></a-sphere>
-                            <a-sphere radius="0.05" color="#00ffff" position="-0.8 0.5 0" material="emissive: #00ffff; opacity: 0.7"
-                                animation__orbit="property: position; to: -0.8 1.5 0; dir: alternate; loop: true; dur: 3000; delay: 200; easing: easeInOutSine"></a-sphere>
-                            <a-sphere radius="0.05" color="#00ffff" position="0 0.5 0.8" material="emissive: #00ffff; opacity: 0.7"
-                                animation__orbit="property: position; to: 0 1.5 0.8; dir: alternate; loop: true; dur: 3000; delay: 400; easing: easeInOutSine"></a-sphere>
-                            <a-sphere radius="0.05" color="#00ffff" position="0 0.5 -0.8" material="emissive: #00ffff; opacity: 0.7"
-                                animation__orbit="property: position; to: 0 1.5 -0.8; dir: alternate; loop: true; dur: 3000; delay: 600; easing: easeInOutSine"></a-sphere>
-
-                            <!-- Luzes -->
-                            <a-light type="ambient" color="#ffffff" intensity="1.2"></a-light>
-                            <a-light type="point" color="#0066ff" intensity="3" distance="5" position="0 2 2"></a-light>
-                            <a-light type="point" color="#00ccff" intensity="2.5" distance="5" position="0 -2 2"></a-light>
-                            <a-light type="point" color="#0099ff" intensity="2" distance="4" position="2 0 1"></a-light>
-
-                        </a-entity>
-                    </a-entity>
-                </a-scene>
-            `;
-
-            el.ar.classList.add('active');
-            esperarCena();
-        }
-
-        function esperarCena() {
-            let tentativas = 0;
-            const intervalo = setInterval(() => {
-                const cena = document.querySelector('a-scene');
-                tentativas++;
-                
-                if (cena && cena.hasLoaded) {
-                    clearInterval(intervalo);
-                    cenaCarregada();
-                } else if (tentativas > 100) {
-                    clearInterval(intervalo);
-                    console.warn("Timeout ao carregar cena");
-                    cenaCarregada(); // Tentar mesmo assim
-                }
-            }, 100);
-        }
-
-        function cenaCarregada() {
-            console.log("✓ Cena AR carregada");
-            arReady = true;
-            el.loading.classList.remove('active');
-            el.ui.classList.add('active');
-            mostrarFeedback("AR ATIVADO", 2000);
-        }
-
-        // ========== FOTO ==========
-        function tirarFoto() {
-            if (!arReady) {
-                mostrarFeedback("Aguarde o AR carregar", 2000);
-                return;
+        if (results.multiFaceLandmarks) {
+            for (const landmarks of results.multiFaceLandmarks) {
+                // AQUI ACONTECE A MÁGICA MATEMÁTICA
+                processarFace(landmarks);
             }
-
-            try {
-                const cena = document.querySelector('a-scene');
-                const video = document.querySelector('video');
-                
-                if (!cena || !video) {
-                    throw new Error("Componentes não encontrados");
-                }
-
-                const canvas3D = cena.components.screenshot.getCanvas('perspective');
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth || 1280;
-                canvas.height = video.videoHeight || 720;
-                const ctx = canvas.getContext('2d');
-
-                // Espelhar vídeo
-                ctx.save();
-                ctx.scale(-1, 1);
-                ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
-                ctx.restore();
-
-                // Adicionar 3D
-                ctx.drawImage(canvas3D, 0, 0, canvas.width, canvas.height);
-
-                const img = canvas.toDataURL('image/png');
-                
-                // Download
-                const a = document.createElement('a');
-                a.href = img;
-                a.download = `cosecurity-ar-${Date.now()}.png`;
-                a.click();
-
-                mostrarFeedback("IMAGEM SALVA!", 1500);
-                
-                setTimeout(() => {
-                    mostrarFeedback("COMPARTILHE NO INSTAGRAM!", 3000);
-                    setTimeout(() => {
-                        window.location.href = "instagram://camera";
-                    }, 500);
-                }, 1500);
-
-            } catch (err) {
-                console.error("Erro ao capturar:", err);
-                mostrarFeedback("Erro ao capturar foto", 2000);
-            }
+            debugElement.innerHTML = `TARGETS: ${results.multiFaceLandmarks.length} <br> STATUS: LOCKED`;
+        } else {
+            debugElement.innerHTML = "SEARCHING...";
         }
+        canvasCtx.restore();
+    }
 
-        // ========== EVENTOS ==========
-        el.btnFoto.addEventListener('click', tirarFoto);
+    function processarFace(landmarks) {
+        // Pontos chaves do MediaPipe FaceMesh
+        // 10: Topo da testa central
+        // 152: Queixo
+        // 234: Têmpora esquerda (na visão da câmera espelhada é direita)
+        // 454: Têmpora direita
 
-        // ========== INIT ==========
-        window.addEventListener('load', () => {
-            console.log("🚀 Iniciando Cosecurity AR");
-            iniciarScanner();
-        });
+        const pTopo = landmarks[10];
+        const pEsq = landmarks[234];
+        const pDir = landmarks[454];
 
-    </script>
+        // Converter coordenadas normalizadas (0 a 1) para pixels
+        const width = canvasElement.width;
+        const height = canvasElement.height;
+
+        const x = pTopo.x * width;
+        const y = pTopo.y * height;
+        
+        // 1. Calcular Rotação (Roll) baseada nas têmporas
+        // Math.atan2(dy, dx) nos dá o ângulo em radianos
+        const dy = (pDir.y - pEsq.y) * height;
+        const dx = (pDir.x - pEsq.x) * width;
+        const angle = Math.atan2(dy, dx);
+
+        // 2. Calcular Escala baseada na distância das têmporas (Euclidiana simples)
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const scaleMultiplier = 2.5; // Ajuste fino: quão grande a coroa deve ser em relação à cabeça
+        const crownWidth = dist * scaleMultiplier;
+        const crownHeight = crownWidth * (crownImage.height / crownImage.width);
+
+        // 3. Renderizar com Transformação Matrix
+        canvasCtx.save();
+        
+        // Mover o "ponto zero" para a testa
+        canvasCtx.translate(x, y); 
+        
+        // Rotacionar
+        canvasCtx.rotate(angle);
+        
+        // Ajuste fino de posição Y (Offset) para a coroa flutuar um pouco acima
+        const yOffset = -crownHeight * 0.8; 
+        
+        // Desenhar imagem centralizada no novo eixo
+        canvasCtx.drawImage(crownImage, -crownWidth/2, yOffset, crownWidth, crownHeight);
+        
+        // Opcional: Efeito Cyberpunk (Glow Box na face)
+        // desenharHUD(canvasCtx, crownWidth, crownHeight, yOffset);
+
+        canvasCtx.restore();
+    }
+
+    // Configuração do MediaPipe
+    const faceMesh = new FaceMesh({locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+    }});
+
+    faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
+
+    faceMesh.onResults(onResults);
+
+    // Inicializar Câmera
+    const camera = new Camera(videoElement, {
+        onFrame: async () => {
+            await faceMesh.send({image: videoElement});
+        },
+        width: 1280,
+        height: 720
+    });
+    camera.start();
+
+</script>
 </body>
 </html>
