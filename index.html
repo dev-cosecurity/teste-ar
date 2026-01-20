@@ -2,162 +2,280 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cosecurity MediaPipe Core</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Cosecurity AR Live + Crop</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
 
     <style>
-        /* Mantendo sua estética Cyberpunk */
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', Courier, monospace; }
-        
-        #main-container { position: relative; width: 100vw; height: 100vh; }
-        
-        /* O vídeo fica escondido ou visível por baixo, mas o canvas é quem manda */
-        #input-video { position: absolute; transform: scaleX(-1); width: 100%; height: 100%; object-fit: cover; opacity: 0; } 
-        #output-canvas { position: absolute; width: 100%; height: 100%; object-fit: cover; }
-
-        .ui-layer {
-            position: absolute; top: 20px; left: 20px; color: #00ffff;
-            text-shadow: 0 0 10px #00ffff; z-index: 10; pointer-events: none;
+        body { 
+            margin: 0; background: #000; overflow: hidden; 
+            font-family: 'Courier New', Courier, monospace; 
         }
 
-        #debug-info {
-            background: rgba(0,0,0,0.7); padding: 10px; border: 1px solid #00ffff;
+        /* CONTAINER PRINCIPAL (TELA CHEIA) */
+        #ar-container {
+            position: relative;
+            width: 100vw; 
+            height: 100vh;
         }
 
-        .scanline {
-            position: absolute; width: 100%; height: 5px; background: rgba(0, 255, 255, 0.3);
-            animation: scan 3s linear infinite; pointer-events: none; z-index: 5;
+        /* O Vídeo fica escondido (usamos ele apenas como fonte de dados) */
+        #input-video { display: none; }
+
+        /* O Canvas de Preview desenha o vídeo + a coroa em tempo real */
+        #preview-canvas {
+            width: 100%; height: 100%; object-fit: cover;
+            transform: scaleX(-1); /* Espelhar preview */
         }
 
-        @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
+        /* UI */
+        #ui-layer {
+            position: absolute; bottom: 30px; width: 100%;
+            display: flex; justify-content: center; z-index: 10;
+        }
+
+        #btn-capture {
+            width: 70px; height: 70px; border-radius: 50%;
+            background: rgba(0,0,0,0.5); border: 3px solid #00ffff;
+            box-shadow: 0 0 15px #00ffff; cursor: pointer;
+            transition: transform 0.2s;
+        }
+        #btn-capture:active { transform: scale(0.9); }
+
+        /* MODAL DE RESULTADO (ONDE MOSTRA A FOTO CROPADA) */
+        #result-modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 20;
+        }
+        #result-modal.active { display: flex; }
+
+        #final-canvas {
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 30px rgba(0,255,255,0.3);
+            max-width: 80vw; max-height: 60vh;
+        }
+
+        .modal-btn {
+            margin-top: 20px; padding: 10px 20px;
+            background: #00ffff; color: #000; border: none; font-weight: bold;
+            cursor: pointer; font-family: inherit;
+        }
     </style>
 </head>
 <body>
 
-<div id="main-container">
-    <video id="input-video" playsinline></video>
-    <canvas id="output-canvas"></canvas>
-    <div class="scanline"></div>
-
-    <div class="ui-layer">
-        <h2>COSECURITY_KERNEL</h2>
-        <div id="debug-info">INIT SYSTEM...</div>
+    <div id="ar-container">
+        <video id="input-video" playsinline></video>
+        <canvas id="preview-canvas"></canvas>
+        
+        <div id="ui-layer">
+            <button id="btn-capture"></button>
+        </div>
     </div>
-</div>
+
+    <div id="result-modal">
+        <h2 style="color:#00ffff; margin-bottom:10px">IDENTIDADE GERADA</h2>
+        <canvas id="final-canvas"></canvas>
+        <button class="modal-btn" onclick="fecharModal()">TIRAR OUTRA</button>
+    </div>
 
 <script>
-    const videoElement = document.getElementById('input-video');
-    const canvasElement = document.getElementById('output-canvas');
-    const canvasCtx = canvasElement.getContext('2d');
-    const debugElement = document.getElementById('debug-info');
+    // --- ELEMENTOS ---
+    const video = document.getElementById('input-video');
+    const previewCanvas = document.getElementById('preview-canvas');
+    const previewCtx = previewCanvas.getContext('2d');
+    const finalCanvas = document.getElementById('final-canvas');
+    const finalCtx = finalCanvas.getContext('2d');
+    const modal = document.getElementById('result-modal');
 
-    // Carregar a imagem da coroa (Substitua pela URL do seu asset 2D ou render do 3D)
-    const crownImage = new Image();
-    crownImage.src = "https://cdn-icons-png.flaticon.com/512/1165/1165239.png"; // Exemplo placeholder
+    // --- VARIÁVEIS DE ESTADO ---
+    let lastLandmarks = null;
+    const crownImg = new Image();
+    crownImg.src = "https://cdn-icons-png.flaticon.com/512/1165/1165239.png"; // Seu asset aqui
 
-    // Ajuste de DPI para nitidez
-    function resizeCanvas() {
-        canvasElement.width = window.innerWidth;
-        canvasElement.height = window.innerHeight;
+    // --- CONFIGURAÇÃO DE TAMANHO ---
+    function resize() {
+        previewCanvas.width = window.innerWidth;
+        previewCanvas.height = window.innerHeight;
     }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+    window.addEventListener('resize', resize);
+    resize();
 
+    // ============================================
+    // 1. O LOOP DE RENDERIZAÇÃO (LIVE AR)
+    // ============================================
     function onResults(results) {
-        // Limpar canvas
-        canvasCtx.save();
-        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-        
-        // Desenhar o vídeo da câmera no canvas (espelhado)
-        canvasCtx.translate(canvasElement.width, 0);
-        canvasCtx.scale(-1, 1);
-        canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+        // A. Desenhar o vídeo da câmera no fundo
+        previewCtx.save();
+        previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        previewCtx.drawImage(results.image, 0, 0, previewCanvas.width, previewCanvas.height);
 
-        if (results.multiFaceLandmarks) {
-            for (const landmarks of results.multiFaceLandmarks) {
-                // AQUI ACONTECE A MÁGICA MATEMÁTICA
-                processarFace(landmarks);
-            }
-            debugElement.innerHTML = `TARGETS: ${results.multiFaceLandmarks.length} <br> STATUS: LOCKED`;
+        // B. Se tiver rosto, desenhar a coroa
+        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+            lastLandmarks = results.multiFaceLandmarks[0];
+            desenharCoroa(previewCtx, lastLandmarks, previewCanvas.width, previewCanvas.height);
         } else {
-            debugElement.innerHTML = "SEARCHING...";
+            lastLandmarks = null;
         }
-        canvasCtx.restore();
+        previewCtx.restore();
     }
 
-    function processarFace(landmarks) {
-        // Pontos chaves do MediaPipe FaceMesh
-        // 10: Topo da testa central
-        // 152: Queixo
-        // 234: Têmpora esquerda (na visão da câmera espelhada é direita)
-        // 454: Têmpora direita
-
-        const pTopo = landmarks[10];
+    // Função auxiliar que desenha a coroa em QUALQUER canvas (Preview ou Final)
+    function desenharCoroa(ctx, landmarks, w, h) {
+        // Pontos de interesse
+        const pTesta = landmarks[10];
         const pEsq = landmarks[234];
         const pDir = landmarks[454];
 
-        // Converter coordenadas normalizadas (0 a 1) para pixels
-        const width = canvasElement.width;
-        const height = canvasElement.height;
+        // Coordenadas em pixels
+        const x = pTesta.x * w;
+        const y = pTesta.y * h;
 
-        const x = pTopo.x * width;
-        const y = pTopo.y * height;
-        
-        // 1. Calcular Rotação (Roll) baseada nas têmporas
-        // Math.atan2(dy, dx) nos dá o ângulo em radianos
-        const dy = (pDir.y - pEsq.y) * height;
-        const dx = (pDir.x - pEsq.x) * width;
+        // Rotação
+        const dy = (pDir.y - pEsq.y) * h;
+        const dx = (pDir.x - pEsq.x) * w;
         const angle = Math.atan2(dy, dx);
 
-        // 2. Calcular Escala baseada na distância das têmporas (Euclidiana simples)
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        const scaleMultiplier = 2.5; // Ajuste fino: quão grande a coroa deve ser em relação à cabeça
-        const crownWidth = dist * scaleMultiplier;
-        const crownHeight = crownWidth * (crownImage.height / crownImage.width);
+        // Escala (Largura da face)
+        const faceDist = Math.sqrt(dx*dx + dy*dy);
+        const crownW = faceDist * 2.5; // Coroa 2.5x maior que a distância das têmporas
+        const crownH = crownW * (crownImg.height / crownImg.width);
 
-        // 3. Renderizar com Transformação Matrix
-        canvasCtx.save();
+        // Renderização
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
         
-        // Mover o "ponto zero" para a testa
-        canvasCtx.translate(x, y); 
+        // Offset Y: subir a coroa para não ficar na testa
+        const yOffset = -crownH * 0.9; 
         
-        // Rotacionar
-        canvasCtx.rotate(angle);
-        
-        // Ajuste fino de posição Y (Offset) para a coroa flutuar um pouco acima
-        const yOffset = -crownHeight * 0.8; 
-        
-        // Desenhar imagem centralizada no novo eixo
-        canvasCtx.drawImage(crownImage, -crownWidth/2, yOffset, crownWidth, crownHeight);
-        
-        // Opcional: Efeito Cyberpunk (Glow Box na face)
-        // desenharHUD(canvasCtx, crownWidth, crownHeight, yOffset);
-
-        canvasCtx.restore();
+        ctx.drawImage(crownImg, -crownW/2, yOffset, crownW, crownH);
+        ctx.restore();
     }
 
-    // Configuração do MediaPipe
-    const faceMesh = new FaceMesh({locateFile: (file) => {
-        return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-    }});
+    // ============================================
+    // 2. A LÓGICA DE CAPTURA (CROP)
+    // ============================================
+    function tirarFoto() {
+        if (!lastLandmarks) {
+            alert("Nenhum rosto detectado!");
+            return;
+        }
 
+        // Usamos as dimensões do vídeo original para qualidade máxima
+        const vW = video.videoWidth;
+        const vH = video.videoHeight;
+
+        // 1. Calcular Bounding Box no vídeo original
+        let minX = vW, minY = vH, maxX = 0, maxY = 0;
+        lastLandmarks.forEach(pt => {
+            const px = pt.x * vW;
+            const py = pt.y * vH;
+            if (px < minX) minX = px;
+            if (px > maxX) maxX = px;
+            if (py < minY) minY = py;
+            if (py > maxY) maxY = py;
+        });
+
+        const faceW = maxX - minX;
+        const faceH = maxY - minY;
+
+        // 2. Definir Padding (Margens)
+        const padX = faceW * 0.3; // 30% lado
+        const padTop = faceH * 1.0; // 100% altura extra no topo (para caber coroa)
+        const padBot = faceH * 0.3; // 30% baixo
+
+        // 3. Definir área de corte (Source)
+        let sx = Math.max(0, minX - padX);
+        let sy = Math.max(0, minY - padTop);
+        let sw = Math.min(vW, maxX + padX) - sx;
+        let sh = Math.min(vH, maxY + padBot) - sy;
+
+        // 4. Configurar Canvas Final
+        finalCanvas.width = sw;
+        finalCanvas.height = sh;
+
+        // 5. Desenhar o recorte do vídeo
+        finalCtx.save();
+        finalCtx.translate(sw, 0); 
+        finalCtx.scale(-1, 1); // Espelhar o resultado final também
+        finalCtx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+        finalCtx.restore();
+
+        // 6. Desenhar a Coroa no Canvas Final
+        // Precisamos recalcular a posição da coroa RELATIVA ao recorte
+        // A função desenharCoroa espera coordenadas globais (0 a 1)
+        // Mas agora nosso "mundo" é apenas o pedaço recortado.
+        
+        // Truque: Criar um objeto de landmarks "falso" ajustado para o novo canvas?
+        // Não. É mais fácil calcular manualmente aqui.
+        
+        // Onde está a testa no sistema de coordenadas do recorte?
+        // No vídeo original era (pTesta.x * vW).
+        // No recorte é: (pTesta.x * vW) - sx.
+        // E lembrando que espelhamos o eixo X no finalCtx...
+        
+        // Vamos usar a função desenharCoroa, mas passaremos landmarks ajustados? 
+        // Não, vamos simplificar. A função desenharCoroa desenha baseada na proporção W/H.
+        // Vamos desenhar manualmente aqui para garantir precisão no recorte.
+        
+        const pTesta = lastLandmarks[10];
+        const pEsq = lastLandmarks[234];
+        const pDir = lastLandmarks[454];
+
+        // Coordenadas absolutas no vídeo
+        const absX = pTesta.x * vW;
+        const absY = pTesta.y * vH;
+
+        // Coordenadas relativas ao recorte (sem espelhamento ainda)
+        // Se o canvas final está espelhado, o desenho deve seguir a lógica invertida
+        // X no recorte espelhado = sw - (absX - sx)
+        const relX = sw - (absX - sx); 
+        const relY = absY - sy;
+
+        // Ângulo (igual, só inverte sinal se espelhado? Não, atan2 resolve)
+        const dy = (pDir.y - pEsq.y) * vH;
+        const dx = (pDir.x - pEsq.x) * vW; // Note: dx no vídeo original
+        const angle = Math.atan2(dy, -dx); // Inverter DX por causa do espelho
+
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const cW = dist * 2.5; 
+        const cH = cW * (crownImg.height / crownImg.width);
+
+        finalCtx.save();
+        finalCtx.translate(relX, relY);
+        finalCtx.rotate(angle);
+        finalCtx.drawImage(crownImg, -cW/2, -cH*0.9, cW, cH);
+        finalCtx.restore();
+
+        // Mostrar Modal
+        modal.classList.add('active');
+    }
+
+    function fecharModal() {
+        modal.classList.remove('active');
+    }
+
+    document.getElementById('btn-capture').addEventListener('click', tirarFoto);
+
+    // ============================================
+    // 3. INIT MEDIAPIPE
+    // ============================================
+    const faceMesh = new FaceMesh({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`});
     faceMesh.setOptions({
         maxNumFaces: 1,
         refineLandmarks: true,
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5
     });
-
     faceMesh.onResults(onResults);
 
-    // Inicializar Câmera
-    const camera = new Camera(videoElement, {
+    const camera = new Camera(video, {
         onFrame: async () => {
-            await faceMesh.send({image: videoElement});
+            await faceMesh.send({image: video});
         },
         width: 1280,
         height: 720
